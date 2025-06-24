@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Task, SubtaskFormData } from '../types/task';
 import { SubtaskItem } from './SubtaskItem';
 import { format } from 'date-fns';
@@ -21,6 +22,7 @@ interface TaskDetailProps {
   onCompleteTask: (taskId: string) => void;
   onAddSubtaskGroup: (taskId: string, groupName: string) => void;
   onDeleteSubtaskGroup: (taskId: string, groupId: string) => void;
+  onMoveSubtask: (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => void;
 }
 
 export const TaskDetail = ({
@@ -32,7 +34,8 @@ export const TaskDetail = ({
   onCompleteSubtask,
   onCompleteTask,
   onAddSubtaskGroup,
-  onDeleteSubtaskGroup
+  onDeleteSubtaskGroup,
+  onMoveSubtask
 }: TaskDetailProps) => {
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
@@ -53,6 +56,25 @@ export const TaskDetail = ({
       setNewGroupName('');
       setShowAddGroup(false);
     }
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+
+    // If dropped in the same position, do nothing
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
+
+    const sourceGroupId = source.droppableId === 'ungrouped' ? null : source.droppableId;
+    const targetGroupId = destination.droppableId === 'ungrouped' ? null : destination.droppableId;
+
+    onMoveSubtask(task.id, draggableId, sourceGroupId, targetGroupId, destination.index);
   };
 
   const isCompleted = !!task.completeDate;
@@ -188,48 +210,105 @@ export const TaskDetail = ({
             </Card>
           )}
 
-          {/* Ungrouped subtasks */}
-          {task.subtasks.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm text-muted-foreground">Individual Subtasks</h4>
-              {task.subtasks.map(subtask => (
-                <SubtaskItem
-                  key={subtask.id}
-                  subtask={subtask}
-                  onUpdate={(subtaskId, data) => onUpdateSubtask(task.id, subtaskId, data)}
-                  onDelete={(subtaskId) => onDeleteSubtask(task.id, subtaskId)}
-                  onComplete={(subtaskId) => onCompleteSubtask(task.id, subtaskId)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Subtask groups */}
-          {task.subtaskGroups.map(group => (
-            <div key={group.id} className="space-y-3">
-              <Separator />
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">{group.name}</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDeleteSubtaskGroup(task.id, group.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Delete Group
-                </Button>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {/* Ungrouped subtasks */}
+            {task.subtasks.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">Individual Subtasks</h4>
+                <Droppable droppableId="ungrouped">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-3"
+                    >
+                      {task.subtasks.map((subtask, index) => (
+                        <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`transition-all duration-200 ${
+                                snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
+                              }`}
+                            >
+                              <SubtaskItem
+                                subtask={subtask}
+                                onUpdate={(subtaskId, data) => onUpdateSubtask(task.id, subtaskId, data)}
+                                onDelete={(subtaskId) => onDeleteSubtask(task.id, subtaskId)}
+                                onComplete={(subtaskId) => onCompleteSubtask(task.id, subtaskId)}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-              {group.subtasks.map(subtask => (
-                <SubtaskItem
-                  key={subtask.id}
-                  subtask={subtask}
-                  onUpdate={(subtaskId, data) => onUpdateSubtask(task.id, subtaskId, data)}
-                  onDelete={(subtaskId) => onDeleteSubtask(task.id, subtaskId)}
-                  onComplete={(subtaskId) => onCompleteSubtask(task.id, subtaskId)}
-                />
-              ))}
-            </div>
-          ))}
+            )}
+
+            {/* Subtask groups */}
+            {task.subtaskGroups.map(group => (
+              <div key={group.id} className="space-y-3">
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">{group.name}</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDeleteSubtaskGroup(task.id, group.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Delete Group
+                  </Button>
+                </div>
+                <Droppable droppableId={group.id}>
+                  {(provided, snapshot) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className={`space-y-3 min-h-[60px] p-3 rounded-lg border-2 border-dashed transition-colors ${
+                        snapshot.isDraggingOver
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-gray-200 bg-gray-50'
+                      }`}
+                    >
+                      {group.subtasks.map((subtask, index) => (
+                        <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`transition-all duration-200 ${
+                                snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
+                              }`}
+                            >
+                              <SubtaskItem
+                                subtask={subtask}
+                                onUpdate={(subtaskId, data) => onUpdateSubtask(task.id, subtaskId, data)}
+                                onDelete={(subtaskId) => onDeleteSubtask(task.id, subtaskId)}
+                                onComplete={(subtaskId) => onCompleteSubtask(task.id, subtaskId)}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                      {group.subtasks.length === 0 && (
+                        <div className="text-center text-muted-foreground text-sm py-4">
+                          Drop subtasks here or create new ones
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            ))}
+          </DragDropContext>
 
           {task.subtasks.length === 0 && task.subtaskGroups.length === 0 && !showAddSubtask && !showAddGroup && (
             <div className="text-center py-8 text-muted-foreground">

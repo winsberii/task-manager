@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -188,6 +187,18 @@ const Index = () => {
     });
   };
 
+  const handleMoveSubtask = (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => {
+    taskService.moveSubtask(taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex);
+    refreshTasks();
+    const updatedTask = taskService.getTaskById(taskId);
+    if (updatedTask) setSelectedTask(updatedTask);
+    
+    toast({
+      title: "Subtask moved",
+      description: "The subtask has been moved successfully.",
+    });
+  };
+
   if (currentView === 'detail' && selectedTask) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -204,6 +215,7 @@ const Index = () => {
           onCompleteTask={handleCompleteTask}
           onAddSubtaskGroup={handleAddSubtaskGroup}
           onDeleteSubtaskGroup={handleDeleteSubtaskGroup}
+          onMoveSubtask={handleMoveSubtask}
         />
       </div>
     );

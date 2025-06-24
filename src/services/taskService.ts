@@ -1,200 +1,238 @@
-
 import { Task, TaskFormData, Subtask, SubtaskFormData, SubtaskGroup } from '../types/task';
+import { v4 as uuidv4 } from 'uuid';
 
 class TaskService {
-  private tasks: Task[] = [
-    {
-      id: '1',
-      name: 'Build Task Management App',
-      content: 'Create a comprehensive task management application with React and TypeScript',
-      dueDate: new Date('2024-07-01'),
-      subtasks: [
-        {
-          id: 'st1',
-          name: 'Set up project structure',
-          content: 'Initialize React app with TypeScript and Tailwind',
-          completeDate: new Date()
-        },
-        {
-          id: 'st2',
-          name: 'Create task components',
-          content: 'Build task list, task card, and task form components'
-        }
-      ],
-      subtaskGroups: [
-        {
-          id: 'sg1',
-          name: 'Frontend Development',
-          subtasks: [
-            {
-              id: 'st3',
-              name: 'Design UI components',
-              content: 'Create reusable UI components'
-            },
-            {
-              id: 'st4',
-              name: 'Implement drag and drop',
-              content: 'Add drag and drop functionality for subtasks'
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: '2',
-      name: 'Learn React Hooks',
-      content: 'Master advanced React hooks patterns',
-      dueDate: new Date('2024-06-25'),
-      subtasks: [],
-      subtaskGroups: []
-    }
-  ];
+  private readonly STORAGE_KEY = 'tasks';
+
+  private loadTasks(): Task[] {
+    const storedTasks = localStorage.getItem(this.STORAGE_KEY);
+    return storedTasks ? JSON.parse(storedTasks) : [];
+  }
+
+  private saveTasks(tasks: Task[]): void {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tasks));
+  }
 
   getAllTasks(): Task[] {
-    return this.tasks;
+    return this.loadTasks();
   }
 
   getTaskById(id: string): Task | undefined {
-    return this.tasks.find(task => task.id === id);
+    return this.loadTasks().find(task => task.id === id);
   }
 
   createTask(taskData: TaskFormData): Task {
     const newTask: Task = {
-      id: Date.now().toString(),
-      name: taskData.name,
-      content: taskData.content,
-      dueDate: taskData.dueDate,
+      id: uuidv4(),
+      ...taskData,
       subtasks: [],
-      subtaskGroups: []
+      subtaskGroups: [],
     };
-    this.tasks.push(newTask);
+    const tasks = this.loadTasks();
+    tasks.push(newTask);
+    this.saveTasks(tasks);
     return newTask;
   }
 
-  updateTask(id: string, taskData: Partial<TaskFormData>): Task | null {
-    const taskIndex = this.tasks.findIndex(task => task.id === id);
-    if (taskIndex === -1) return null;
-    
-    this.tasks[taskIndex] = { ...this.tasks[taskIndex], ...taskData };
-    return this.tasks[taskIndex];
+  updateTask(id: string, taskData: TaskFormData): Task | undefined {
+    const tasks = this.loadTasks();
+    const taskIndex = tasks.findIndex(task => task.id === id);
+
+    if (taskIndex === -1) {
+      return undefined;
+    }
+
+    tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
+    this.saveTasks(tasks);
+    return tasks[taskIndex];
   }
 
-  deleteTask(id: string): boolean {
-    const taskIndex = this.tasks.findIndex(task => task.id === id);
-    if (taskIndex === -1) return false;
-    
-    this.tasks.splice(taskIndex, 1);
-    return true;
+  deleteTask(id: string): void {
+    let tasks = this.loadTasks();
+    tasks = tasks.filter(task => task.id !== id);
+    this.saveTasks(tasks);
   }
 
-  copyTask(id: string): Task | null {
-    const task = this.getTaskById(id);
-    if (!task) return null;
+  copyTask(id: string): Task | undefined {
+    const tasks = this.loadTasks();
+    const taskToCopy = tasks.find(task => task.id === id);
 
-    const copiedTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      name: `${task.name} (Copy)`,
-      completeDate: undefined,
-      subtasks: task.subtasks.map(subtask => ({
-        ...subtask,
-        id: Date.now().toString() + Math.random(),
-        completeDate: undefined
-      })),
-      subtaskGroups: task.subtaskGroups.map(group => ({
-        ...group,
-        id: Date.now().toString() + Math.random(),
-        subtasks: group.subtasks.map(subtask => ({
-          ...subtask,
-          id: Date.now().toString() + Math.random(),
-          completeDate: undefined
-        }))
-      }))
+    if (!taskToCopy) {
+      return undefined;
+    }
+
+    const newTask: Task = {
+      ...taskToCopy,
+      id: uuidv4(),
+      name: `${taskToCopy.name} (Copy)`,
     };
-    
-    this.tasks.push(copiedTask);
-    return copiedTask;
+
+    tasks.push(newTask);
+    this.saveTasks(tasks);
+    return newTask;
   }
 
-  completeTask(id: string): Task | null {
-    const task = this.getTaskById(id);
-    if (!task) return null;
+  completeTask(id: string): Task | undefined {
+    const tasks = this.loadTasks();
+    const taskIndex = tasks.findIndex(task => task.id === id);
 
+    if (taskIndex === -1) {
+      return undefined;
+    }
+
+    const task = tasks[taskIndex];
     task.completeDate = task.completeDate ? undefined : new Date();
+    this.saveTasks(tasks);
     return task;
   }
 
   addSubtask(taskId: string, subtaskData: SubtaskFormData): Subtask | null {
-    const task = this.getTaskById(taskId);
+    const tasks = this.loadTasks();
+    const task = tasks.find(t => t.id === taskId);
     if (!task) return null;
 
     const newSubtask: Subtask = {
-      id: Date.now().toString(),
-      name: subtaskData.name,
-      content: subtaskData.content,
-      dueDate: subtaskData.dueDate
+      id: uuidv4(),
+      ...subtaskData,
     };
-
     task.subtasks.push(newSubtask);
+    this.saveTasks(tasks);
     return newSubtask;
   }
 
-  updateSubtask(taskId: string, subtaskId: string, subtaskData: Partial<SubtaskFormData>): Subtask | null {
-    const task = this.getTaskById(taskId);
+  updateSubtask(taskId: string, subtaskId: string, subtaskData: SubtaskFormData): Subtask | null {
+    const tasks = this.loadTasks();
+    const task = tasks.find(t => t.id === taskId);
     if (!task) return null;
 
     const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
-    if (subtaskIndex === -1) return null;
+    if (subtaskIndex !== -1) {
+      task.subtasks[subtaskIndex] = { ...task.subtasks[subtaskIndex], ...subtaskData };
+      this.saveTasks(tasks);
+      return task.subtasks[subtaskIndex];
+    }
 
-    task.subtasks[subtaskIndex] = { ...task.subtasks[subtaskIndex], ...subtaskData };
-    return task.subtasks[subtaskIndex];
+    for (const group of task.subtaskGroups) {
+      const subtaskIndex = group.subtasks.findIndex(st => st.id === subtaskId);
+      if (subtaskIndex !== -1) {
+        group.subtasks[subtaskIndex] = { ...group.subtasks[subtaskIndex], ...subtaskData };
+        this.saveTasks(tasks);
+        return group.subtasks[subtaskIndex];
+      }
+    }
+
+    return null;
   }
 
-  deleteSubtask(taskId: string, subtaskId: string): boolean {
-    const task = this.getTaskById(taskId);
-    if (!task) return false;
+  deleteSubtask(taskId: string, subtaskId: string): void {
+    const tasks = this.loadTasks();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
 
-    const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
-    if (subtaskIndex === -1) return false;
+    task.subtasks = task.subtasks.filter(st => st.id !== subtaskId);
 
-    task.subtasks.splice(subtaskIndex, 1);
-    return true;
+    task.subtaskGroups.forEach(group => {
+      group.subtasks = group.subtasks.filter(st => st.id !== subtaskId);
+    });
+
+    this.saveTasks(tasks);
   }
 
   completeSubtask(taskId: string, subtaskId: string): Subtask | null {
-    const task = this.getTaskById(taskId);
+    const tasks = this.loadTasks();
+    const task = tasks.find(t => t.id === taskId);
     if (!task) return null;
 
-    const subtask = task.subtasks.find(st => st.id === subtaskId);
-    if (!subtask) return null;
+    for (const subtaskList of [task.subtasks, ...task.subtaskGroups.map(g => g.subtasks)]) {
+      const subtask = subtaskList.find(st => st.id === subtaskId);
+      if (subtask) {
+        subtask.completeDate = subtask.completeDate ? undefined : new Date();
+        this.saveTasks(tasks);
+        return subtask;
+      }
+    }
 
-    subtask.completeDate = subtask.completeDate ? undefined : new Date();
-    return subtask;
+    return null;
   }
 
   addSubtaskGroup(taskId: string, groupName: string): SubtaskGroup | null {
-    const task = this.getTaskById(taskId);
+    const tasks = this.loadTasks();
+    const task = tasks.find(t => t.id === taskId);
     if (!task) return null;
 
     const newGroup: SubtaskGroup = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       name: groupName,
-      subtasks: []
+      subtasks: [],
     };
-
     task.subtaskGroups.push(newGroup);
+    this.saveTasks(tasks);
     return newGroup;
   }
 
-  deleteSubtaskGroup(taskId: string, groupId: string): boolean {
+  deleteSubtaskGroup(taskId: string, groupId: string): void {
+    const tasks = this.loadTasks();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    task.subtaskGroups = task.subtaskGroups.filter(group => group.id !== groupId);
+    this.saveTasks(tasks);
+  }
+
+  moveSubtask(
+    taskId: string, 
+    subtaskId: string, 
+    sourceGroupId: string | null, 
+    targetGroupId: string | null, 
+    targetIndex: number
+  ): void {
+    const tasks = this.getAllTasks();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    let subtaskToMove: Subtask | null = null;
+
+    // Find and remove the subtask from its current location
+    if (sourceGroupId === null) {
+      // Moving from ungrouped subtasks
+      const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
+      if (subtaskIndex !== -1) {
+        subtaskToMove = task.subtasks.splice(subtaskIndex, 1)[0];
+      }
+    } else {
+      // Moving from a group
+      const sourceGroup = task.subtaskGroups.find(g => g.id === sourceGroupId);
+      if (sourceGroup) {
+        const subtaskIndex = sourceGroup.subtasks.findIndex(st => st.id === subtaskId);
+        if (subtaskIndex !== -1) {
+          subtaskToMove = sourceGroup.subtasks.splice(subtaskIndex, 1)[0];
+        }
+      }
+    }
+
+    if (!subtaskToMove) return;
+
+    // Add the subtask to its new location
+    if (targetGroupId === null) {
+      // Moving to ungrouped subtasks
+      task.subtasks.splice(targetIndex, 0, subtaskToMove);
+    } else {
+      // Moving to a group
+      const targetGroup = task.subtaskGroups.find(g => g.id === targetGroupId);
+      if (targetGroup) {
+        targetGroup.subtasks.splice(targetIndex, 0, subtaskToMove);
+      }
+    }
+
+    this.saveTasks(tasks);
+  }
+
+  private findSubtask(taskId: string, subtaskId: string): Subtask | undefined {
     const task = this.getTaskById(taskId);
-    if (!task) return false;
+    if (!task) return undefined;
 
-    const groupIndex = task.subtaskGroups.findIndex(group => group.id === groupId);
-    if (groupIndex === -1) return false;
-
-    task.subtaskGroups.splice(groupIndex, 1);
-    return true;
+    return task.subtasks.find(st => st.id === subtaskId) ||
+      task.subtaskGroups.flatMap(group => group.subtasks).find(st => st.id === subtaskId);
   }
 }
 
