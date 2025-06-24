@@ -222,13 +222,13 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Task Manager</h1>
-            <p className="text-gray-600 mt-1">Organize your tasks and boost productivity</p>
+            <h1 className="text-2xl font-bold text-gray-900">Task Manager</h1>
+            <p className="text-gray-600 mt-1 text-sm">Organize your tasks and boost productivity</p>
           </div>
           <Button onClick={() => {
             setEditingTask(null);
@@ -240,18 +240,18 @@ const Index = () => {
         </div>
 
         {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-9"
             />
           </div>
           <Select value={filterStatus} onValueChange={(value: typeof filterStatus) => setFilterStatus(value)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] h-9">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -264,33 +264,33 @@ const Index = () => {
         </div>
 
         {/* Task Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-blue-600">{tasks.length}</div>
-            <div className="text-sm text-gray-600">Total Tasks</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-white p-3 rounded-lg shadow-sm border">
+            <div className="text-xl font-bold text-blue-600">{tasks.length}</div>
+            <div className="text-xs text-gray-600">Total Tasks</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="bg-white p-3 rounded-lg shadow-sm border">
+            <div className="text-xl font-bold text-green-600">
               {tasks.filter(t => t.completeDate).length}
             </div>
-            <div className="text-sm text-gray-600">Completed</div>
+            <div className="text-xs text-gray-600">Completed</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-orange-600">
+          <div className="bg-white p-3 rounded-lg shadow-sm border">
+            <div className="text-xl font-bold text-orange-600">
               {tasks.filter(t => !t.completeDate).length}
             </div>
-            <div className="text-sm text-gray-600">Active</div>
+            <div className="text-xs text-gray-600">Active</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-red-600">
+          <div className="bg-white p-3 rounded-lg shadow-sm border">
+            <div className="text-xl font-bold text-red-600">
               {tasks.filter(t => t.dueDate && !t.completeDate && new Date() > t.dueDate).length}
             </div>
-            <div className="text-sm text-gray-600">Overdue</div>
+            <div className="text-xs text-gray-600">Overdue</div>
           </div>
         </div>
 
         {/* Task List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredTasks.map(task => (
             <TaskCard
               key={task.id}
@@ -309,10 +309,10 @@ const Index = () => {
 
         {/* Empty State */}
         {filteredTasks.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">📝</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
-            <p className="text-gray-600 mb-4">
+          <div className="text-center py-8">
+            <div className="text-gray-400 text-5xl mb-3">📝</div>
+            <h3 className="text-base font-medium text-gray-900 mb-2">No tasks found</h3>
+            <p className="text-gray-600 mb-4 text-sm">
               {searchTerm || filterStatus !== 'all' 
                 ? 'Try adjusting your search or filter criteria.'
                 : 'Get started by creating your first task!'
