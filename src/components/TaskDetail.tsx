@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +40,8 @@ export const TaskDetail = ({
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newSubtask, setNewSubtask] = useState({ name: '', content: '' });
   const [newGroupName, setNewGroupName] = useState('');
+  const [showAddSubtaskInGroup, setShowAddSubtaskInGroup] = useState<string | null>(null);
+  const [newGroupSubtask, setNewGroupSubtask] = useState({ name: '', content: '' });
 
   const handleAddSubtask = () => {
     if (newSubtask.name.trim()) {
@@ -55,6 +56,15 @@ export const TaskDetail = ({
       onAddSubtaskGroup(task.id, newGroupName);
       setNewGroupName('');
       setShowAddGroup(false);
+    }
+  };
+
+  const handleAddSubtaskToGroup = (groupId: string) => {
+    if (newGroupSubtask.name.trim()) {
+      const newSubtaskData = { ...newGroupSubtask };
+      onAddSubtask(task.id, newSubtaskData);
+      setNewGroupSubtask({ name: '', content: '' });
+      setShowAddSubtaskInGroup(null);
     }
   };
 
@@ -256,15 +266,57 @@ export const TaskDetail = ({
                 <Separator />
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">{group.name}</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteSubtaskGroup(task.id, group.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    Delete Group
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddSubtaskInGroup(group.id)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Subtask
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteSubtaskGroup(task.id, group.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Delete Group
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Add subtask to group form */}
+                {showAddSubtaskInGroup === group.id && (
+                  <Card className="border-dashed">
+                    <CardContent className="p-4 space-y-3">
+                      <Input
+                        placeholder="Subtask name..."
+                        value={newGroupSubtask.name}
+                        onChange={(e) => setNewGroupSubtask(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                      <Textarea
+                        placeholder="Subtask description..."
+                        value={newGroupSubtask.content}
+                        onChange={(e) => setNewGroupSubtask(prev => ({ ...prev, content: e.target.value }))}
+                        rows={2}
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleAddSubtaskToGroup(group.id)}>
+                          Add Subtask
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setShowAddSubtaskInGroup(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Droppable droppableId={group.id}>
                   {(provided, snapshot) => (
                     <div
@@ -298,7 +350,7 @@ export const TaskDetail = ({
                         </Draggable>
                       ))}
                       {provided.placeholder}
-                      {group.subtasks.length === 0 && (
+                      {group.subtasks.length === 0 && !showAddSubtaskInGroup && (
                         <div className="text-center text-muted-foreground text-sm py-4">
                           Drop subtasks here or create new ones
                         </div>
