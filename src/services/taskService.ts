@@ -1,3 +1,4 @@
+
 import { Task, TaskFormData, Subtask, SubtaskFormData, SubtaskGroup } from '../types/task';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -61,10 +62,31 @@ class TaskService {
       return undefined;
     }
 
+    // Helper function to copy subtasks without completion dates
+    const copySubtasksWithoutCompletion = (subtasks: Subtask[]): Subtask[] => {
+      return subtasks.map(subtask => ({
+        ...subtask,
+        id: uuidv4(),
+        completeDate: undefined
+      }));
+    };
+
+    // Helper function to copy subtask groups without completion dates
+    const copySubtaskGroupsWithoutCompletion = (groups: SubtaskGroup[]): SubtaskGroup[] => {
+      return groups.map(group => ({
+        ...group,
+        id: uuidv4(),
+        subtasks: copySubtasksWithoutCompletion(group.subtasks)
+      }));
+    };
+
     const newTask: Task = {
       ...taskToCopy,
       id: uuidv4(),
       name: `${taskToCopy.name} (Copy)`,
+      completeDate: undefined,
+      subtasks: copySubtasksWithoutCompletion(taskToCopy.subtasks),
+      subtaskGroups: copySubtaskGroupsWithoutCompletion(taskToCopy.subtaskGroups),
     };
 
     tasks.push(newTask);
