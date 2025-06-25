@@ -2,25 +2,30 @@
 export interface Subtask {
   id: string;
   name: string;
-  content?: string;
-  dueDate?: Date;
+  content: string;
   completeDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface SubtaskGroup {
   id: string;
   name: string;
   subtasks: Subtask[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Task {
   id: string;
   name: string;
-  content?: string;
+  content: string;
   dueDate?: Date;
+  completeDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
   subtasks: Subtask[];
   subtaskGroups: SubtaskGroup[];
-  completeDate?: Date;
 }
 
 export interface TaskFormData {
@@ -32,5 +37,4 @@ export interface TaskFormData {
 export interface SubtaskFormData {
   name: string;
   content: string;
-  dueDate?: Date;
 }

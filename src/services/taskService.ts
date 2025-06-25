@@ -1,261 +1,193 @@
 
-import { Task, TaskFormData, Subtask, SubtaskFormData, SubtaskGroup } from '../types/task';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
+import { Task, TaskFormData } from '@/types/task';
 
-class TaskService {
-  private readonly STORAGE_KEY = 'tasks';
+export const taskService = {
+  // Get all tasks for the current user
+  async getTasks(): Promise<Task[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  private loadTasks(): Task[] {
-    const storedTasks = localStorage.getItem(this.STORAGE_KEY);
-    return storedTasks ? JSON.parse(storedTasks) : [];
-  }
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      throw error;
+    }
 
-  private saveTasks(tasks: Task[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tasks));
-  }
-
-  getAllTasks(): Task[] {
-    return this.loadTasks();
-  }
-
-  getTaskById(id: string): Task | undefined {
-    return this.loadTasks().find(task => task.id === id);
-  }
-
-  createTask(taskData: TaskFormData): Task {
-    const newTask: Task = {
-      id: uuidv4(),
-      ...taskData,
+    return data.map(task => ({
+      id: task.id,
+      name: task.name,
+      content: task.content || '',
+      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+      completeDate: task.complete_date ? new Date(task.complete_date) : undefined,
+      createdAt: new Date(task.created_at),
+      updatedAt: new Date(task.updated_at),
       subtasks: [],
-      subtaskGroups: [],
-    };
-    const tasks = this.loadTasks();
-    tasks.push(newTask);
-    this.saveTasks(tasks);
-    return newTask;
-  }
+      subtaskGroups: []
+    }));
+  },
 
-  updateTask(id: string, taskData: TaskFormData): Task | undefined {
-    const tasks = this.loadTasks();
-    const taskIndex = tasks.findIndex(task => task.id === id);
+  // Create a new task
+  async createTask(taskData: TaskFormData): Promise<Task> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        name: taskData.name,
+        content: taskData.content || null,
+        due_date: taskData.dueDate ? taskData.dueDate.toISOString().split('T')[0] : null,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      })
+      .select()
+      .single();
 
-    if (taskIndex === -1) {
-      return undefined;
+    if (error) {
+      console.error('Error creating task:', error);
+      throw error;
     }
 
-    tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
-    this.saveTasks(tasks);
-    return tasks[taskIndex];
-  }
-
-  deleteTask(id: string): void {
-    let tasks = this.loadTasks();
-    tasks = tasks.filter(task => task.id !== id);
-    this.saveTasks(tasks);
-  }
-
-  copyTask(id: string): Task | undefined {
-    const tasks = this.loadTasks();
-    const taskToCopy = tasks.find(task => task.id === id);
-
-    if (!taskToCopy) {
-      return undefined;
-    }
-
-    // Helper function to copy subtasks without completion dates
-    const copySubtasksWithoutCompletion = (subtasks: Subtask[]): Subtask[] => {
-      return subtasks.map(subtask => ({
-        ...subtask,
-        id: uuidv4(),
-        completeDate: undefined
-      }));
-    };
-
-    // Helper function to copy subtask groups without completion dates
-    const copySubtaskGroupsWithoutCompletion = (groups: SubtaskGroup[]): SubtaskGroup[] => {
-      return groups.map(group => ({
-        ...group,
-        id: uuidv4(),
-        subtasks: copySubtasksWithoutCompletion(group.subtasks)
-      }));
-    };
-
-    const newTask: Task = {
-      ...taskToCopy,
-      id: uuidv4(),
-      name: `${taskToCopy.name} (Copy)`,
-      completeDate: undefined,
-      subtasks: copySubtasksWithoutCompletion(taskToCopy.subtasks),
-      subtaskGroups: copySubtaskGroupsWithoutCompletion(taskToCopy.subtaskGroups),
-    };
-
-    tasks.push(newTask);
-    this.saveTasks(tasks);
-    return newTask;
-  }
-
-  completeTask(id: string): Task | undefined {
-    const tasks = this.loadTasks();
-    const taskIndex = tasks.findIndex(task => task.id === id);
-
-    if (taskIndex === -1) {
-      return undefined;
-    }
-
-    const task = tasks[taskIndex];
-    task.completeDate = task.completeDate ? undefined : new Date();
-    this.saveTasks(tasks);
-    return task;
-  }
-
-  addSubtask(taskId: string, subtaskData: SubtaskFormData): Subtask | null {
-    const tasks = this.loadTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return null;
-
-    const newSubtask: Subtask = {
-      id: uuidv4(),
-      ...subtaskData,
-    };
-    task.subtasks.push(newSubtask);
-    this.saveTasks(tasks);
-    return newSubtask;
-  }
-
-  updateSubtask(taskId: string, subtaskId: string, subtaskData: SubtaskFormData): Subtask | null {
-    const tasks = this.loadTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return null;
-
-    const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
-    if (subtaskIndex !== -1) {
-      task.subtasks[subtaskIndex] = { ...task.subtasks[subtaskIndex], ...subtaskData };
-      this.saveTasks(tasks);
-      return task.subtasks[subtaskIndex];
-    }
-
-    for (const group of task.subtaskGroups) {
-      const subtaskIndex = group.subtasks.findIndex(st => st.id === subtaskId);
-      if (subtaskIndex !== -1) {
-        group.subtasks[subtaskIndex] = { ...group.subtasks[subtaskIndex], ...subtaskData };
-        this.saveTasks(tasks);
-        return group.subtasks[subtaskIndex];
-      }
-    }
-
-    return null;
-  }
-
-  deleteSubtask(taskId: string, subtaskId: string): void {
-    const tasks = this.loadTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    task.subtasks = task.subtasks.filter(st => st.id !== subtaskId);
-
-    task.subtaskGroups.forEach(group => {
-      group.subtasks = group.subtasks.filter(st => st.id !== subtaskId);
-    });
-
-    this.saveTasks(tasks);
-  }
-
-  completeSubtask(taskId: string, subtaskId: string): Subtask | null {
-    const tasks = this.loadTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return null;
-
-    for (const subtaskList of [task.subtasks, ...task.subtaskGroups.map(g => g.subtasks)]) {
-      const subtask = subtaskList.find(st => st.id === subtaskId);
-      if (subtask) {
-        subtask.completeDate = subtask.completeDate ? undefined : new Date();
-        this.saveTasks(tasks);
-        return subtask;
-      }
-    }
-
-    return null;
-  }
-
-  addSubtaskGroup(taskId: string, groupName: string): SubtaskGroup | null {
-    const tasks = this.loadTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return null;
-
-    const newGroup: SubtaskGroup = {
-      id: uuidv4(),
-      name: groupName,
+    return {
+      id: data.id,
+      name: data.name,
+      content: data.content || '',
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
       subtasks: [],
+      subtaskGroups: []
     };
-    task.subtaskGroups.push(newGroup);
-    this.saveTasks(tasks);
-    return newGroup;
-  }
+  },
 
-  deleteSubtaskGroup(taskId: string, groupId: string): void {
-    const tasks = this.loadTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+  // Update an existing task
+  async updateTask(taskId: string, taskData: TaskFormData): Promise<Task> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
+        name: taskData.name,
+        content: taskData.content || null,
+        due_date: taskData.dueDate ? taskData.dueDate.toISOString().split('T')[0] : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .select()
+      .single();
 
-    task.subtaskGroups = task.subtaskGroups.filter(group => group.id !== groupId);
-    this.saveTasks(tasks);
-  }
-
-  moveSubtask(
-    taskId: string, 
-    subtaskId: string, 
-    sourceGroupId: string | null, 
-    targetGroupId: string | null, 
-    targetIndex: number
-  ): void {
-    const tasks = this.getAllTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    let subtaskToMove: Subtask | null = null;
-
-    // Find and remove the subtask from its current location
-    if (sourceGroupId === null) {
-      // Moving from ungrouped subtasks
-      const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
-      if (subtaskIndex !== -1) {
-        subtaskToMove = task.subtasks.splice(subtaskIndex, 1)[0];
-      }
-    } else {
-      // Moving from a group
-      const sourceGroup = task.subtaskGroups.find(g => g.id === sourceGroupId);
-      if (sourceGroup) {
-        const subtaskIndex = sourceGroup.subtasks.findIndex(st => st.id === subtaskId);
-        if (subtaskIndex !== -1) {
-          subtaskToMove = sourceGroup.subtasks.splice(subtaskIndex, 1)[0];
-        }
-      }
+    if (error) {
+      console.error('Error updating task:', error);
+      throw error;
     }
 
-    if (!subtaskToMove) return;
+    return {
+      id: data.id,
+      name: data.name,
+      content: data.content || '',
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      subtasks: [],
+      subtaskGroups: []
+    };
+  },
 
-    // Add the subtask to its new location
-    if (targetGroupId === null) {
-      // Moving to ungrouped subtasks
-      task.subtasks.splice(targetIndex, 0, subtaskToMove);
-    } else {
-      // Moving to a group
-      const targetGroup = task.subtaskGroups.find(g => g.id === targetGroupId);
-      if (targetGroup) {
-        targetGroup.subtasks.splice(targetIndex, 0, subtaskToMove);
-      }
+  // Delete a task
+  async deleteTask(taskId: string): Promise<void> {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) {
+      console.error('Error deleting task:', error);
+      throw error;
+    }
+  },
+
+  // Toggle task completion
+  async toggleTaskComplete(taskId: string): Promise<Task> {
+    // First get the current task to check its completion status
+    const { data: currentTask, error: fetchError } = await supabase
+      .from('tasks')
+      .select('complete_date')
+      .eq('id', taskId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching task:', fetchError);
+      throw fetchError;
     }
 
-    this.saveTasks(tasks);
+    const isCompleted = !!currentTask.complete_date;
+    const newCompleteDate = isCompleted ? null : new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
+        complete_date: newCompleteDate,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error toggling task completion:', error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      content: data.content || '',
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      subtasks: [],
+      subtaskGroups: []
+    };
+  },
+
+  // Copy a task
+  async copyTask(taskId: string): Promise<Task> {
+    const { data: originalTask, error: fetchError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching task to copy:', fetchError);
+      throw fetchError;
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        name: `${originalTask.name} (Copy)`,
+        content: originalTask.content,
+        due_date: originalTask.due_date,
+        user_id: originalTask.user_id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error copying task:', error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      content: data.content || '',
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      subtasks: [],
+      subtaskGroups: []
+    };
   }
-
-  private findSubtask(taskId: string, subtaskId: string): Subtask | undefined {
-    const task = this.getTaskById(taskId);
-    if (!task) return undefined;
-
-    return task.subtasks.find(st => st.id === subtaskId) ||
-      task.subtaskGroups.flatMap(group => group.subtasks).find(st => st.id === subtaskId);
-  }
-}
-
-export const taskService = new TaskService();
+};

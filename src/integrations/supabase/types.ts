@@ -36,6 +36,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          complete_date: string | null
+          content: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          complete_date?: string | null
+          content?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          complete_date?: string | null
+          content?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
