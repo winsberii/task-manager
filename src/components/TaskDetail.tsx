@@ -39,8 +39,8 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
 
   // Mutations for real-time sync
   const addSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: SubtaskFormData }) => 
-      taskService.addSubtask(taskId, data),
+    mutationFn: ({ taskId, data, subtaskGroupId }: { taskId: string; data: SubtaskFormData; subtaskGroupId?: string }) => 
+      taskService.addSubtask(taskId, data, subtaskGroupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -48,8 +48,8 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   });
 
   const updateSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, subtaskId, data }: { taskId: string; subtaskId: string; data: SubtaskFormData }) => 
-      taskService.updateSubtask(taskId, subtaskId, data),
+    mutationFn: ({ subtaskId, data }: { subtaskId: string; data: SubtaskFormData }) => 
+      taskService.updateSubtask(subtaskId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -57,8 +57,8 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   });
 
   const deleteSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) => 
-      taskService.deleteSubtask(taskId, subtaskId),
+    mutationFn: (subtaskId: string) => 
+      taskService.deleteSubtask(subtaskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -66,8 +66,8 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   });
 
   const completeSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) => 
-      taskService.toggleSubtaskComplete(taskId, subtaskId),
+    mutationFn: (subtaskId: string) => 
+      taskService.toggleSubtaskComplete(subtaskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -84,8 +84,8 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   });
 
   const deleteSubtaskGroupMutation = useMutation({
-    mutationFn: ({ taskId, groupId }: { taskId: string; groupId: string }) => 
-      taskService.deleteSubtaskGroup(taskId, groupId),
+    mutationFn: (groupId: string) => 
+      taskService.deleteSubtaskGroup(groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -93,13 +93,8 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   });
 
   const moveSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex }: {
-      taskId: string;
-      subtaskId: string;
-      sourceGroupId: string | null;
-      targetGroupId: string | null;
-      targetIndex: number;
-    }) => taskService.moveSubtask(taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex),
+    mutationFn: ({ subtaskId, targetGroupId }: { subtaskId: string; targetGroupId: string | null }) => 
+      taskService.moveSubtask(subtaskId, targetGroupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -132,23 +127,22 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
 
   const handleAddSubtaskToGroup = (groupId: string) => {
     if (newGroupSubtask.name.trim()) {
-      const newSubtaskData = { ...newGroupSubtask };
-      addSubtaskMutation.mutate({ taskId: task.id, data: newSubtaskData });
+      addSubtaskMutation.mutate({ taskId: task.id, data: newGroupSubtask, subtaskGroupId: groupId });
       setNewGroupSubtask({ name: '', content: '' });
       setShowAddSubtaskInGroup(null);
     }
   };
 
   const handleUpdateSubtask = (subtaskId: string, data: SubtaskFormData) => {
-    updateSubtaskMutation.mutate({ taskId: task.id, subtaskId, data });
+    updateSubtaskMutation.mutate({ subtaskId, data });
   };
 
   const handleDeleteSubtask = (subtaskId: string) => {
-    deleteSubtaskMutation.mutate({ taskId: task.id, subtaskId });
+    deleteSubtaskMutation.mutate(subtaskId);
   };
 
   const handleCompleteSubtask = (subtaskId: string) => {
-    completeSubtaskMutation.mutate({ taskId: task.id, subtaskId });
+    completeSubtaskMutation.mutate(subtaskId);
   };
 
   const handleCompleteTask = (taskId: string) => {
@@ -159,12 +153,12 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     addSubtaskGroupMutation.mutate({ taskId, groupName });
   };
 
-  const handleDeleteSubtaskGroup = (taskId: string, groupId: string) => {
-    deleteSubtaskGroupMutation.mutate({ taskId, groupId });
+  const handleDeleteSubtaskGroup = (groupId: string) => {
+    deleteSubtaskGroupMutation.mutate(groupId);
   };
 
-  const handleMoveSubtask = (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => {
-    moveSubtaskMutation.mutate({ taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex });
+  const handleMoveSubtask = (subtaskId: string, targetGroupId: string | null) => {
+    moveSubtaskMutation.mutate({ subtaskId, targetGroupId });
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -180,10 +174,9 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
       return;
     }
 
-    const sourceGroupId = source.droppableId === 'ungrouped' ? null : source.droppableId;
     const targetGroupId = destination.droppableId === 'ungrouped' ? null : destination.droppableId;
 
-    handleMoveSubtask(task.id, draggableId, sourceGroupId, targetGroupId, destination.index);
+    handleMoveSubtask(draggableId, targetGroupId);
   };
 
   const copyTaskUrl = () => {
@@ -447,7 +440,7 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDeleteSubtaskGroup(task.id, group.id)}
+                      onClick={() => handleDeleteSubtaskGroup(group.id)}
                       className="text-red-600 hover:text-red-700"
                     >
                       Delete Group
