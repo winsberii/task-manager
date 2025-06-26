@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -224,7 +223,7 @@ export const TaskDashboard = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {tasks.map((task) => (
             <TaskCard
               key={task.id}
