@@ -36,6 +36,89 @@ export type Database = {
         }
         Relationships: []
       }
+      subtask_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtask_groups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subtasks: {
+        Row: {
+          complete_date: string | null
+          content: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          name: string
+          subtask_group_id: string | null
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          complete_date?: string | null
+          content?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name: string
+          subtask_group_id?: string | null
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          complete_date?: string | null
+          content?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name?: string
+          subtask_group_id?: string | null
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtasks_subtask_group_id_fkey"
+            columns: ["subtask_group_id"]
+            isOneToOne: false
+            referencedRelation: "subtask_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           complete_date: string | null

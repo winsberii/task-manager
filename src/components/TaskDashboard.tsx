@@ -6,7 +6,7 @@ import { taskService } from '@/services/taskService';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskForm } from '@/components/TaskForm';
 import { TaskDetail } from '@/components/TaskDetail';
-import { Task, TaskFormData } from '@/types/task';
+import { Task, TaskFormData, SubtaskFormData } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 
 export const TaskDashboard = () => {
@@ -126,6 +126,153 @@ export const TaskDashboard = () => {
     },
   });
 
+  // Add subtask mutation
+  const addSubtaskMutation = useMutation({
+    mutationFn: ({ taskId, subtaskData, subtaskGroupId }: { 
+      taskId: string; 
+      subtaskData: SubtaskFormData; 
+      subtaskGroupId?: string 
+    }) => taskService.addSubtask(taskId, subtaskData, subtaskGroupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask added successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to add subtask',
+        variant: 'destructive',
+      });
+      console.error('Add subtask error:', error);
+    },
+  });
+
+  // Update subtask mutation
+  const updateSubtaskMutation = useMutation({
+    mutationFn: ({ subtaskId, subtaskData }: { subtaskId: string; subtaskData: SubtaskFormData }) =>
+      taskService.updateSubtask(subtaskId, subtaskData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask updated successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update subtask',
+        variant: 'destructive',
+      });
+      console.error('Update subtask error:', error);
+    },
+  });
+
+  // Delete subtask mutation
+  const deleteSubtaskMutation = useMutation({
+    mutationFn: taskService.deleteSubtask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask deleted successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete subtask',
+        variant: 'destructive',
+      });
+      console.error('Delete subtask error:', error);
+    },
+  });
+
+  // Toggle subtask completion mutation
+  const toggleSubtaskCompleteMutation = useMutation({
+    mutationFn: taskService.toggleSubtaskComplete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask status updated',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update subtask status',
+        variant: 'destructive',
+      });
+      console.error('Toggle subtask complete error:', error);
+    },
+  });
+
+  // Add subtask group mutation
+  const addSubtaskGroupMutation = useMutation({
+    mutationFn: ({ taskId, groupName }: { taskId: string; groupName: string }) =>
+      taskService.addSubtaskGroup(taskId, groupName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask group added successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to add subtask group',
+        variant: 'destructive',
+      });
+      console.error('Add subtask group error:', error);
+    },
+  });
+
+  // Delete subtask group mutation
+  const deleteSubtaskGroupMutation = useMutation({
+    mutationFn: taskService.deleteSubtaskGroup,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask group deleted successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete subtask group',
+        variant: 'destructive',
+      });
+      console.error('Delete subtask group error:', error);
+    },
+  });
+
+  // Move subtask mutation
+  const moveSubtaskMutation = useMutation({
+    mutationFn: ({ subtaskId, targetGroupId }: { subtaskId: string; targetGroupId: string | null }) =>
+      taskService.moveSubtask(subtaskId, targetGroupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Subtask moved successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to move subtask',
+        variant: 'destructive',
+      });
+      console.error('Move subtask error:', error);
+    },
+  });
+
   const handleCreateTask = (taskData: TaskFormData) => {
     createTaskMutation.mutate(taskData);
   };
@@ -155,6 +302,38 @@ export const TaskDashboard = () => {
     copyTaskMutation.mutate(taskId);
   };
 
+  const handleAddSubtask = (taskId: string, subtaskData: SubtaskFormData) => {
+    addSubtaskMutation.mutate({ taskId, subtaskData });
+  };
+
+  const handleUpdateSubtask = (taskId: string, subtaskId: string, subtaskData: SubtaskFormData) => {
+    updateSubtaskMutation.mutate({ subtaskId, subtaskData });
+  };
+
+  const handleDeleteSubtask = (taskId: string, subtaskId: string) => {
+    if (confirm('Are you sure you want to delete this subtask?')) {
+      deleteSubtaskMutation.mutate(subtaskId);
+    }
+  };
+
+  const handleCompleteSubtask = (taskId: string, subtaskId: string) => {
+    toggleSubtaskCompleteMutation.mutate(subtaskId);
+  };
+
+  const handleAddSubtaskGroup = (taskId: string, groupName: string) => {
+    addSubtaskGroupMutation.mutate({ taskId, groupName });
+  };
+
+  const handleDeleteSubtaskGroup = (taskId: string, groupId: string) => {
+    if (confirm('Are you sure you want to delete this subtask group?')) {
+      deleteSubtaskGroupMutation.mutate(groupId);
+    }
+  };
+
+  const handleMoveSubtask = (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => {
+    moveSubtaskMutation.mutate({ subtaskId, targetGroupId });
+  };
+
   const handleOpenTask = (taskId: string) => {
     setSelectedTaskId(taskId);
   };
@@ -171,14 +350,14 @@ export const TaskDashboard = () => {
       <TaskDetail
         task={selectedTask}
         onBack={() => setSelectedTaskId(null)}
-        onAddSubtask={() => {}} // Placeholder for subtask functionality
-        onUpdateSubtask={() => {}} // Placeholder
-        onDeleteSubtask={() => {}} // Placeholder
-        onCompleteSubtask={() => {}} // Placeholder
+        onAddSubtask={handleAddSubtask}
+        onUpdateSubtask={handleUpdateSubtask}
+        onDeleteSubtask={handleDeleteSubtask}
+        onCompleteSubtask={handleCompleteSubtask}
         onCompleteTask={handleToggleComplete}
-        onAddSubtaskGroup={() => {}} // Placeholder
-        onDeleteSubtaskGroup={() => {}} // Placeholder
-        onMoveSubtask={() => {}} // Placeholder
+        onAddSubtaskGroup={handleAddSubtaskGroup}
+        onDeleteSubtaskGroup={handleDeleteSubtaskGroup}
+        onMoveSubtask={handleMoveSubtask}
       />
     );
   }
