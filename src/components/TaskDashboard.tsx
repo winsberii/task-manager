@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -173,7 +174,7 @@ export const TaskDashboard = () => {
 
   // Delete subtask mutation
   const deleteSubtaskMutation = useMutation({
-    mutationFn: taskService.deleteSubtask,
+    mutationFn: (subtaskId: string) => taskService.deleteSubtask(subtaskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast({
@@ -193,7 +194,7 @@ export const TaskDashboard = () => {
 
   // Toggle subtask completion mutation
   const toggleSubtaskCompleteMutation = useMutation({
-    mutationFn: taskService.toggleSubtaskComplete,
+    mutationFn: (subtaskId: string) => taskService.toggleSubtaskComplete(subtaskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast({
@@ -234,7 +235,7 @@ export const TaskDashboard = () => {
 
   // Delete subtask group mutation
   const deleteSubtaskGroupMutation = useMutation({
-    mutationFn: taskService.deleteSubtaskGroup,
+    mutationFn: (groupId: string) => taskService.deleteSubtaskGroup(groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast({
@@ -302,38 +303,6 @@ export const TaskDashboard = () => {
     copyTaskMutation.mutate(taskId);
   };
 
-  const handleAddSubtask = (taskId: string, subtaskData: SubtaskFormData) => {
-    addSubtaskMutation.mutate({ taskId, subtaskData });
-  };
-
-  const handleUpdateSubtask = (taskId: string, subtaskId: string, subtaskData: SubtaskFormData) => {
-    updateSubtaskMutation.mutate({ subtaskId, subtaskData });
-  };
-
-  const handleDeleteSubtask = (taskId: string, subtaskId: string) => {
-    if (confirm('Are you sure you want to delete this subtask?')) {
-      deleteSubtaskMutation.mutate(subtaskId);
-    }
-  };
-
-  const handleCompleteSubtask = (taskId: string, subtaskId: string) => {
-    toggleSubtaskCompleteMutation.mutate(subtaskId);
-  };
-
-  const handleAddSubtaskGroup = (taskId: string, groupName: string) => {
-    addSubtaskGroupMutation.mutate({ taskId, groupName });
-  };
-
-  const handleDeleteSubtaskGroup = (taskId: string, groupId: string) => {
-    if (confirm('Are you sure you want to delete this subtask group?')) {
-      deleteSubtaskGroupMutation.mutate(groupId);
-    }
-  };
-
-  const handleMoveSubtask = (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => {
-    moveSubtaskMutation.mutate({ subtaskId, targetGroupId });
-  };
-
   const handleOpenTask = (taskId: string) => {
     setSelectedTaskId(taskId);
   };
@@ -350,14 +319,6 @@ export const TaskDashboard = () => {
       <TaskDetail
         task={selectedTask}
         onBack={() => setSelectedTaskId(null)}
-        onAddSubtask={handleAddSubtask}
-        onUpdateSubtask={handleUpdateSubtask}
-        onDeleteSubtask={handleDeleteSubtask}
-        onCompleteSubtask={handleCompleteSubtask}
-        onCompleteTask={handleToggleComplete}
-        onAddSubtaskGroup={handleAddSubtaskGroup}
-        onDeleteSubtaskGroup={handleDeleteSubtaskGroup}
-        onMoveSubtask={handleMoveSubtask}
       />
     );
   }
@@ -407,11 +368,8 @@ export const TaskDashboard = () => {
             <TaskCard
               key={task.id}
               task={task}
-              onEdit={handleEditTask}
-              onDelete={handleDeleteTask}
-              onCopy={handleCopyTask}
               onComplete={handleToggleComplete}
-              onOpen={handleOpenTask}
+              onClick={(task) => handleOpenTask(task.id)}
             />
           ))}
         </div>

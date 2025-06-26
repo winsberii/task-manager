@@ -232,14 +232,15 @@ export const taskService = {
     };
   },
 
-  // Add subtask to task
-  async addSubtask(taskId: string, data: SubtaskFormData): Promise<void> {
+  // Add subtask
+  async addSubtask(taskId: string, subtaskData: SubtaskFormData, subtaskGroupId?: string): Promise<void> {
     const { error } = await supabase
       .from('subtasks')
       .insert({
         task_id: taskId,
-        name: data.name,
-        content: data.content,
+        subtask_group_id: subtaskGroupId || null,
+        name: subtaskData.name,
+        content: subtaskData.content,
       });
 
     if (error) {
@@ -249,16 +250,15 @@ export const taskService = {
   },
 
   // Update subtask
-  async updateSubtask(taskId: string, subtaskId: string, data: SubtaskFormData): Promise<void> {
+  async updateSubtask(subtaskId: string, subtaskData: SubtaskFormData): Promise<void> {
     const { error } = await supabase
       .from('subtasks')
       .update({
-        name: data.name,
-        content: data.content,
+        name: subtaskData.name,
+        content: subtaskData.content,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', subtaskId)
-      .eq('task_id', taskId);
+      .eq('id', subtaskId);
 
     if (error) {
       console.error('Error updating subtask:', error);
@@ -267,12 +267,11 @@ export const taskService = {
   },
 
   // Delete subtask
-  async deleteSubtask(taskId: string, subtaskId: string): Promise<void> {
+  async deleteSubtask(subtaskId: string): Promise<void> {
     const { error } = await supabase
       .from('subtasks')
       .delete()
-      .eq('id', subtaskId)
-      .eq('task_id', taskId);
+      .eq('id', subtaskId);
 
     if (error) {
       console.error('Error deleting subtask:', error);
@@ -281,13 +280,12 @@ export const taskService = {
   },
 
   // Toggle subtask completion
-  async toggleSubtaskComplete(taskId: string, subtaskId: string): Promise<void> {
+  async toggleSubtaskComplete(subtaskId: string): Promise<void> {
     // First get the current subtask
     const { data: subtask, error: fetchError } = await supabase
       .from('subtasks')
       .select('complete_date')
       .eq('id', subtaskId)
-      .eq('task_id', taskId)
       .single();
 
     if (fetchError) {
@@ -295,16 +293,14 @@ export const taskService = {
       throw fetchError;
     }
 
-    const newCompleteDate = subtask.complete_date ? null : new Date().toISOString();
-
+    const isCompleted = !!subtask.complete_date;
     const { error } = await supabase
       .from('subtasks')
       .update({
-        complete_date: newCompleteDate,
+        complete_date: isCompleted ? null : new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', subtaskId)
-      .eq('task_id', taskId);
+      .eq('id', subtaskId);
 
     if (error) {
       console.error('Error toggling subtask completion:', error);
@@ -328,12 +324,11 @@ export const taskService = {
   },
 
   // Delete subtask group
-  async deleteSubtaskGroup(taskId: string, groupId: string): Promise<void> {
+  async deleteSubtaskGroup(groupId: string): Promise<void> {
     const { error } = await supabase
       .from('subtask_groups')
       .delete()
-      .eq('id', groupId)
-      .eq('task_id', taskId);
+      .eq('id', groupId);
 
     if (error) {
       console.error('Error deleting subtask group:', error);
@@ -341,16 +336,15 @@ export const taskService = {
     }
   },
 
-  // Move subtask between groups
-  async moveSubtask(taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number): Promise<void> {
+  // Move subtask
+  async moveSubtask(subtaskId: string, targetGroupId: string | null): Promise<void> {
     const { error } = await supabase
       .from('subtasks')
       .update({
         subtask_group_id: targetGroupId,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', subtaskId)
-      .eq('task_id', taskId);
+      .eq('id', subtaskId);
 
     if (error) {
       console.error('Error moving subtask:', error);
