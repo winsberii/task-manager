@@ -1,41 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle, ExternalLink, Copy } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Task, SubtaskFormData } from '../types/task';
 import { SubtaskItem } from './SubtaskItem';
 import { format } from 'date-fns';
+import { 
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { useToast } from '@/hooks/use-toast';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { taskService } from '@/services/taskService';
 
 interface TaskDetailProps {
   task: Task;
   onBack: () => void;
-  onAddSubtask: (taskId: string, data: SubtaskFormData) => void;
-  onUpdateSubtask: (taskId: string, subtaskId: string, data: SubtaskFormData) => void;
-  onDeleteSubtask: (taskId: string, subtaskId: string) => void;
-  onCompleteSubtask: (taskId: string, subtaskId: string) => void;
-  onCompleteTask: (taskId: string) => void;
-  onAddSubtaskGroup: (taskId: string, groupName: string) => void;
-  onDeleteSubtaskGroup: (taskId: string, groupId: string) => void;
-  onMoveSubtask: (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => void;
+  highlightSubtaskId?: string;
 }
 
-export const TaskDetail = ({
-  task,
-  onBack,
-  onAddSubtask,
-  onUpdateSubtask,
-  onDeleteSubtask,
-  onCompleteSubtask,
-  onCompleteTask,
-  onAddSubtaskGroup,
-  onDeleteSubtaskGroup,
-  onMoveSubtask
-}: TaskDetailProps) => {
+export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps) => {
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newSubtask, setNewSubtask] = useState({ name: '', content: '' });
@@ -43,9 +34,89 @@ export const TaskDetail = ({
   const [showAddSubtaskInGroup, setShowAddSubtaskInGroup] = useState<string | null>(null);
   const [newGroupSubtask, setNewGroupSubtask] = useState({ name: '', content: '' });
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Mutations for real-time sync
+  const addSubtaskMutation = useMutation({
+    mutationFn: ({ taskId, data }: { taskId: string; data: SubtaskFormData }) => 
+      taskService.addSubtask(taskId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const updateSubtaskMutation = useMutation({
+    mutationFn: ({ taskId, subtaskId, data }: { taskId: string; subtaskId: string; data: SubtaskFormData }) => 
+      taskService.updateSubtask(taskId, subtaskId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const deleteSubtaskMutation = useMutation({
+    mutationFn: ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) => 
+      taskService.deleteSubtask(taskId, subtaskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const completeSubtaskMutation = useMutation({
+    mutationFn: ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) => 
+      taskService.toggleSubtaskComplete(taskId, subtaskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const addSubtaskGroupMutation = useMutation({
+    mutationFn: ({ taskId, groupName }: { taskId: string; groupName: string }) => 
+      taskService.addSubtaskGroup(taskId, groupName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const deleteSubtaskGroupMutation = useMutation({
+    mutationFn: ({ taskId, groupId }: { taskId: string; groupId: string }) => 
+      taskService.deleteSubtaskGroup(taskId, groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const moveSubtaskMutation = useMutation({
+    mutationFn: ({ taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex }: {
+      taskId: string;
+      subtaskId: string;
+      sourceGroupId: string | null;
+      targetGroupId: string | null;
+      targetIndex: number;
+    }) => taskService.moveSubtask(taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: (taskId: string) => taskService.toggleTaskComplete(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
   const handleAddSubtask = () => {
     if (newSubtask.name.trim()) {
-      onAddSubtask(task.id, newSubtask);
+      addSubtaskMutation.mutate({ taskId: task.id, data: newSubtask });
       setNewSubtask({ name: '', content: '' });
       setShowAddSubtask(false);
     }
@@ -53,7 +124,7 @@ export const TaskDetail = ({
 
   const handleAddGroup = () => {
     if (newGroupName.trim()) {
-      onAddSubtaskGroup(task.id, newGroupName);
+      addSubtaskGroupMutation.mutate({ taskId: task.id, groupName: newGroupName });
       setNewGroupName('');
       setShowAddGroup(false);
     }
@@ -62,10 +133,38 @@ export const TaskDetail = ({
   const handleAddSubtaskToGroup = (groupId: string) => {
     if (newGroupSubtask.name.trim()) {
       const newSubtaskData = { ...newGroupSubtask };
-      onAddSubtask(task.id, newSubtaskData);
+      addSubtaskMutation.mutate({ taskId: task.id, data: newSubtaskData });
       setNewGroupSubtask({ name: '', content: '' });
       setShowAddSubtaskInGroup(null);
     }
+  };
+
+  const handleUpdateSubtask = (subtaskId: string, data: SubtaskFormData) => {
+    updateSubtaskMutation.mutate({ taskId: task.id, subtaskId, data });
+  };
+
+  const handleDeleteSubtask = (subtaskId: string) => {
+    deleteSubtaskMutation.mutate({ taskId: task.id, subtaskId });
+  };
+
+  const handleCompleteSubtask = (subtaskId: string) => {
+    completeSubtaskMutation.mutate({ taskId: task.id, subtaskId });
+  };
+
+  const handleCompleteTask = (taskId: string) => {
+    completeTaskMutation.mutate(taskId);
+  };
+
+  const handleAddSubtaskGroup = (taskId: string, groupName: string) => {
+    addSubtaskGroupMutation.mutate({ taskId, groupName });
+  };
+
+  const handleDeleteSubtaskGroup = (taskId: string, groupId: string) => {
+    deleteSubtaskGroupMutation.mutate({ taskId, groupId });
+  };
+
+  const handleMoveSubtask = (taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number) => {
+    moveSubtaskMutation.mutate({ taskId, subtaskId, sourceGroupId, targetGroupId, targetIndex });
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -84,8 +183,39 @@ export const TaskDetail = ({
     const sourceGroupId = source.droppableId === 'ungrouped' ? null : source.droppableId;
     const targetGroupId = destination.droppableId === 'ungrouped' ? null : destination.droppableId;
 
-    onMoveSubtask(task.id, draggableId, sourceGroupId, targetGroupId, destination.index);
+    handleMoveSubtask(task.id, draggableId, sourceGroupId, targetGroupId, destination.index);
   };
+
+  const copyTaskUrl = () => {
+    const url = `${window.location.origin}/task/${task.id}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link copied",
+      description: "Task link has been copied to clipboard",
+    });
+  };
+
+  const copySubtaskUrl = (subtaskId: string) => {
+    const url = `${window.location.origin}/task/${task.id}/subtask/${subtaskId}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link copied",
+      description: "Subtask link has been copied to clipboard",
+    });
+  };
+
+  const openTaskInNewWindow = () => {
+    window.open(`/task/${task.id}`, '_blank');
+  };
+
+  useEffect(() => {
+    // Set up real-time sync interval
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [task.id, queryClient]);
 
   const isCompleted = !!task.completeDate;
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
@@ -98,53 +228,78 @@ export const TaskDetail = ({
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Tasks
         </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={copyTaskUrl}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Link
+          </Button>
+          <Button variant="outline" size="sm" onClick={openTaskInNewWindow}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open in New Window
+          </Button>
+        </div>
       </div>
 
       {/* Task Info */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className={`text-2xl ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                {task.name}
-              </CardTitle>
-              {task.content && (
-                <p className="text-muted-foreground mt-2">{task.content}</p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              onClick={() => onCompleteTask(task.id)}
-              className="h-10 w-10 p-0"
-            >
-              {isCompleted ? (
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-              ) : (
-                <Circle className="h-6 w-6" />
-              )}
-            </Button>
-          </div>
-          
-          <div className="flex gap-2 mt-4">
-            {task.dueDate && (
-              <Badge variant={isOverdue ? "destructive" : "outline"} className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                Due {format(task.dueDate, 'MMM d, yyyy')}
-              </Badge>
-            )}
-            {isCompleted && (
-              <Badge variant="default" className="bg-green-100 text-green-800">
-                Completed
-              </Badge>
-            )}
-            {isOverdue && (
-              <Badge variant="destructive">
-                Overdue
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-      </Card>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className={`text-2xl ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                    {task.name}
+                  </CardTitle>
+                  {task.content && (
+                    <p className="text-muted-foreground mt-2">{task.content}</p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCompleteTask(task.id)}
+                  className="h-10 w-10 p-0"
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  ) : (
+                    <Circle className="h-6 w-6" />
+                  )}
+                </Button>
+              </div>
+              
+              <div className="flex gap-2 mt-4">
+                {task.dueDate && (
+                  <Badge variant={isOverdue ? "destructive" : "outline"} className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Due {format(task.dueDate, 'MMM d, yyyy')}
+                  </Badge>
+                )}
+                {isCompleted && (
+                  <Badge variant="default" className="bg-green-100 text-green-800">
+                    Completed
+                  </Badge>
+                )}
+                {isOverdue && (
+                  <Badge variant="destructive">
+                    Overdue
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+          </Card>
+        </ContextMenuTrigger>
+        
+        <ContextMenuContent>
+          <ContextMenuItem onClick={copyTaskUrl}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Task Link
+          </ContextMenuItem>
+          <ContextMenuItem onClick={openTaskInNewWindow}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open in New Window
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* Subtasks Section */}
       <Card>
@@ -235,21 +390,35 @@ export const TaskDetail = ({
                       {task.subtasks.map((subtask, index) => (
                         <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
                           {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`transition-all duration-200 ${
-                                snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
-                              }`}
-                            >
-                              <SubtaskItem
-                                subtask={subtask}
-                                onUpdate={(subtaskId, data) => onUpdateSubtask(task.id, subtaskId, data)}
-                                onDelete={(subtaskId) => onDeleteSubtask(task.id, subtaskId)}
-                                onComplete={(subtaskId) => onCompleteSubtask(task.id, subtaskId)}
-                              />
-                            </div>
+                            <ContextMenu>
+                              <ContextMenuTrigger asChild>
+                                <div
+                                  id={`subtask-${subtask.id}`}
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`transition-all duration-200 ${
+                                    snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
+                                  } ${
+                                    highlightSubtaskId === subtask.id ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
+                                  }`}
+                                >
+                                  <SubtaskItem
+                                    subtask={subtask}
+                                    onUpdate={handleUpdateSubtask}
+                                    onDelete={handleDeleteSubtask}
+                                    onComplete={handleCompleteSubtask}
+                                  />
+                                </div>
+                              </ContextMenuTrigger>
+                              
+                              <ContextMenuContent>
+                                <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Copy Subtask Link
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            </ContextMenu>
                           )}
                         </Draggable>
                       ))}
@@ -278,7 +447,7 @@ export const TaskDetail = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDeleteSubtaskGroup(task.id, group.id)}
+                      onClick={() => handleDeleteSubtaskGroup(task.id, group.id)}
                       className="text-red-600 hover:text-red-700"
                     >
                       Delete Group
@@ -331,21 +500,35 @@ export const TaskDetail = ({
                       {group.subtasks.map((subtask, index) => (
                         <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
                           {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`transition-all duration-200 ${
-                                snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
-                              }`}
-                            >
-                              <SubtaskItem
-                                subtask={subtask}
-                                onUpdate={(subtaskId, data) => onUpdateSubtask(task.id, subtaskId, data)}
-                                onDelete={(subtaskId) => onDeleteSubtask(task.id, subtaskId)}
-                                onComplete={(subtaskId) => onCompleteSubtask(task.id, subtaskId)}
-                              />
-                            </div>
+                            <ContextMenu>
+                              <ContextMenuTrigger asChild>
+                                <div
+                                  id={`subtask-${subtask.id}`}
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`transition-all duration-200 ${
+                                    snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
+                                  } ${
+                                    highlightSubtaskId === subtask.id ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
+                                  }`}
+                                >
+                                  <SubtaskItem
+                                    subtask={subtask}
+                                    onUpdate={handleUpdateSubtask}
+                                    onDelete={handleDeleteSubtask}
+                                    onComplete={handleCompleteSubtask}
+                                  />
+                                </div>
+                              </ContextMenuTrigger>
+                              
+                              <ContextMenuContent>
+                                <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Copy Subtask Link
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            </ContextMenu>
                           )}
                         </Draggable>
                       ))}

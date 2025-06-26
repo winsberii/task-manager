@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import TaskDetailPage from "./pages/TaskDetailPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => {
@@ -36,6 +37,22 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/task/:taskId" 
+                element={
+                  <ProtectedRoute>
+                    <TaskDetailPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/task/:taskId/subtask/:subtaskId" 
+                element={
+                  <ProtectedRoute>
+                    <TaskDetailPage />
                   </ProtectedRoute>
                 } 
               />

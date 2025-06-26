@@ -1,111 +1,114 @@
-import { supabase } from '@/integrations/supabase/client';
-import { Task, TaskFormData, Subtask, SubtaskGroup, SubtaskFormData } from '@/types/task';
+import { supabase } from "@/integrations/supabase/client";
+import { Task, TaskFormData, SubtaskFormData } from "@/types/task";
 
 export const taskService = {
   // Get all tasks for the current user with subtasks and subtask groups
   async getTasks(): Promise<Task[]> {
-    const { data: tasksData, error: tasksError } = await supabase
+    const { data: tasks, error } = await supabase
       .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (tasksError) {
-      console.error('Error fetching tasks:', tasksError);
-      throw tasksError;
-    }
-
-    // Fetch subtasks and subtask groups for all tasks
-    const taskIds = tasksData.map(task => task.id);
-    
-    const [subtasksResult, subtaskGroupsResult] = await Promise.all([
-      supabase
-        .from('subtasks')
-        .select('*')
-        .in('task_id', taskIds)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('subtask_groups')
-        .select(`
+      .select(`
+        *,
+        subtasks (*),
+        subtask_groups (
           *,
           subtasks (*)
-        `)
-        .in('task_id', taskIds)
-        .order('created_at', { ascending: true })
-    ]);
+        )
+      `)
+      .order('created_at', { ascending: false });
 
-    if (subtasksResult.error) {
-      console.error('Error fetching subtasks:', subtasksResult.error);
-      throw subtasksResult.error;
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      throw error;
     }
 
-    if (subtaskGroupsResult.error) {
-      console.error('Error fetching subtask groups:', subtaskGroupsResult.error);
-      throw subtaskGroupsResult.error;
-    }
-
-    // Group subtasks by task_id (only ungrouped subtasks)
-    const ungroupedSubtasks = subtasksResult.data.filter(st => !st.subtask_group_id);
-    const subtasksByTask = ungroupedSubtasks.reduce((acc, subtask) => {
-      if (!acc[subtask.task_id]) {
-        acc[subtask.task_id] = [];
-      }
-      acc[subtask.task_id].push({
-        id: subtask.id,
-        name: subtask.name,
-        content: subtask.content || '',
-        dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
-        completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
-        createdAt: new Date(subtask.created_at),
-        updatedAt: new Date(subtask.updated_at)
-      });
-      return acc;
-    }, {} as Record<string, Subtask[]>);
-
-    // Group subtask groups by task_id
-    const subtaskGroupsByTask = subtaskGroupsResult.data.reduce((acc, group) => {
-      if (!acc[group.task_id]) {
-        acc[group.task_id] = [];
-      }
-      acc[group.task_id].push({
-        id: group.id,
-        name: group.name,
-        subtasks: (group.subtasks || []).map((st: any) => ({
-          id: st.id,
-          name: st.name,
-          content: st.content || '',
-          dueDate: st.due_date ? new Date(st.due_date) : undefined,
-          completeDate: st.complete_date ? new Date(st.complete_date) : undefined,
-          createdAt: new Date(st.created_at),
-          updatedAt: new Date(st.updated_at)
-        })),
-        createdAt: new Date(group.created_at),
-        updatedAt: new Date(group.updated_at)
-      });
-      return acc;
-    }, {} as Record<string, SubtaskGroup[]>);
-
-    return tasksData.map(task => ({
-      id: task.id,
-      name: task.name,
-      content: task.content || '',
+    return tasks.map(task => ({
+      ...task,
       dueDate: task.due_date ? new Date(task.due_date) : undefined,
       completeDate: task.complete_date ? new Date(task.complete_date) : undefined,
       createdAt: new Date(task.created_at),
       updatedAt: new Date(task.updated_at),
-      subtasks: subtasksByTask[task.id] || [],
-      subtaskGroups: subtaskGroupsByTask[task.id] || []
+      subtasks: task.subtasks.map((subtask: any) => ({
+        ...subtask,
+        dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
+        completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
+        createdAt: new Date(subtask.created_at),
+        updatedAt: new Date(subtask.updated_at),
+      })),
+      subtaskGroups: task.subtask_groups.map((group: any) => ({
+        ...group,
+        createdAt: new Date(group.created_at),
+        updatedAt: new Date(group.updated_at),
+        subtasks: group.subtasks.map((subtask: any) => ({
+          ...subtask,
+          dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
+          completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
+          createdAt: new Date(subtask.created_at),
+          updatedAt: new Date(subtask.updated_at),
+        })),
+      })),
     }));
   },
 
+  // Get a specific task
+  async getTask(taskId: string): Promise<Task> {
+    const { data: task, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        subtasks (*),
+        subtask_groups (
+          *,
+          subtasks (*)
+        )
+      `)
+      .eq('id', taskId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching task:', error);
+      throw error;
+    }
+
+    return {
+      ...task,
+      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+      completeDate: task.complete_date ? new Date(task.complete_date) : undefined,
+      createdAt: new Date(task.created_at),
+      updatedAt: new Date(task.updated_at),
+      subtasks: task.subtasks.map((subtask: any) => ({
+        ...subtask,
+        dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
+        completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
+        createdAt: new Date(subtask.created_at),
+        updatedAt: new Date(subtask.updated_at),
+      })),
+      subtaskGroups: task.subtask_groups.map((group: any) => ({
+        ...group,
+        createdAt: new Date(group.created_at),
+        updatedAt: new Date(group.updated_at),
+        subtasks: group.subtasks.map((subtask: any) => ({
+          ...subtask,
+          dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
+          completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
+          createdAt: new Date(subtask.created_at),
+          updatedAt: new Date(subtask.updated_at),
+        })),
+      })),
+    };
+  },
+
   // Create a new task
-  async createTask(taskData: TaskFormData): Promise<Task> {
-    const { data, error } = await supabase
+  async createTask(data: TaskFormData): Promise<Task> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data: task, error } = await supabase
       .from('tasks')
       .insert({
-        name: taskData.name,
-        content: taskData.content || null,
-        due_date: taskData.dueDate ? taskData.dueDate.toISOString().split('T')[0] : null,
-        user_id: (await supabase.auth.getUser()).data.user?.id
+        name: data.name,
+        content: data.content,
+        due_date: data.dueDate ? data.dueDate.toISOString().split('T')[0] : null,
+        user_id: user.id,
       })
       .select()
       .single();
@@ -116,48 +119,32 @@ export const taskService = {
     }
 
     return {
-      id: data.id,
-      name: data.name,
-      content: data.content || '',
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
+      ...task,
+      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+      completeDate: task.complete_date ? new Date(task.complete_date) : undefined,
+      createdAt: new Date(task.created_at),
+      updatedAt: new Date(task.updated_at),
       subtasks: [],
-      subtaskGroups: []
+      subtaskGroups: [],
     };
   },
 
   // Update an existing task
-  async updateTask(taskId: string, taskData: TaskFormData): Promise<Task> {
-    const { data, error } = await supabase
+  async updateTask(taskId: string, data: TaskFormData): Promise<void> {
+    const { error } = await supabase
       .from('tasks')
       .update({
-        name: taskData.name,
-        content: taskData.content || null,
-        due_date: taskData.dueDate ? taskData.dueDate.toISOString().split('T')[0] : null,
-        updated_at: new Date().toISOString()
+        name: data.name,
+        content: data.content,
+        due_date: data.dueDate ? data.dueDate.toISOString().split('T')[0] : null,
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', taskId)
-      .select()
-      .single();
+      .eq('id', taskId);
 
     if (error) {
       console.error('Error updating task:', error);
       throw error;
     }
-
-    return {
-      id: data.id,
-      name: data.name,
-      content: data.content || '',
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-      subtasks: [],
-      subtaskGroups: []
-    };
   },
 
   // Delete a task
@@ -174,9 +161,9 @@ export const taskService = {
   },
 
   // Toggle task completion
-  async toggleTaskComplete(taskId: string): Promise<Task> {
-    // First get the current task to check its completion status
-    const { data: currentTask, error: fetchError } = await supabase
+  async toggleTaskComplete(taskId: string): Promise<void> {
+    // First get the current task
+    const { data: task, error: fetchError } = await supabase
       .from('tasks')
       .select('complete_date')
       .eq('id', taskId)
@@ -187,35 +174,20 @@ export const taskService = {
       throw fetchError;
     }
 
-    const isCompleted = !!currentTask.complete_date;
-    const newCompleteDate = isCompleted ? null : new Date().toISOString();
+    const newCompleteDate = task.complete_date ? null : new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({
         complete_date: newCompleteDate,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', taskId)
-      .select()
-      .single();
+      .eq('id', taskId);
 
     if (error) {
       console.error('Error toggling task completion:', error);
       throw error;
     }
-
-    return {
-      id: data.id,
-      name: data.name,
-      content: data.content || '',
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-      subtasks: [],
-      subtaskGroups: []
-    };
   },
 
   // Copy a task
@@ -261,69 +233,46 @@ export const taskService = {
   },
 
   // Add subtask to task
-  async addSubtask(taskId: string, subtaskData: SubtaskFormData, subtaskGroupId?: string): Promise<Subtask> {
-    const { data, error } = await supabase
+  async addSubtask(taskId: string, data: SubtaskFormData): Promise<void> {
+    const { error } = await supabase
       .from('subtasks')
       .insert({
         task_id: taskId,
-        subtask_group_id: subtaskGroupId || null,
-        name: subtaskData.name,
-        content: subtaskData.content || null
-      })
-      .select()
-      .single();
+        name: data.name,
+        content: data.content,
+      });
 
     if (error) {
-      console.error('Error creating subtask:', error);
+      console.error('Error adding subtask:', error);
       throw error;
     }
-
-    return {
-      id: data.id,
-      name: data.name,
-      content: data.content || '',
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
-    };
   },
 
   // Update subtask
-  async updateSubtask(subtaskId: string, subtaskData: SubtaskFormData): Promise<Subtask> {
-    const { data, error } = await supabase
+  async updateSubtask(taskId: string, subtaskId: string, data: SubtaskFormData): Promise<void> {
+    const { error } = await supabase
       .from('subtasks')
       .update({
-        name: subtaskData.name,
-        content: subtaskData.content || null,
-        updated_at: new Date().toISOString()
+        name: data.name,
+        content: data.content,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', subtaskId)
-      .select()
-      .single();
+      .eq('task_id', taskId);
 
     if (error) {
       console.error('Error updating subtask:', error);
       throw error;
     }
-
-    return {
-      id: data.id,
-      name: data.name,
-      content: data.content || '',
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
-    };
   },
 
   // Delete subtask
-  async deleteSubtask(subtaskId: string): Promise<void> {
+  async deleteSubtask(taskId: string, subtaskId: string): Promise<void> {
     const { error } = await supabase
       .from('subtasks')
       .delete()
-      .eq('id', subtaskId);
+      .eq('id', subtaskId)
+      .eq('task_id', taskId);
 
     if (error) {
       console.error('Error deleting subtask:', error);
@@ -332,12 +281,13 @@ export const taskService = {
   },
 
   // Toggle subtask completion
-  async toggleSubtaskComplete(subtaskId: string): Promise<Subtask> {
-    // First get the current subtask to check its completion status
-    const { data: currentSubtask, error: fetchError } = await supabase
+  async toggleSubtaskComplete(taskId: string, subtaskId: string): Promise<void> {
+    // First get the current subtask
+    const { data: subtask, error: fetchError } = await supabase
       .from('subtasks')
       .select('complete_date')
       .eq('id', subtaskId)
+      .eq('task_id', taskId)
       .single();
 
     if (fetchError) {
@@ -345,66 +295,45 @@ export const taskService = {
       throw fetchError;
     }
 
-    const isCompleted = !!currentSubtask.complete_date;
-    const newCompleteDate = isCompleted ? null : new Date().toISOString();
+    const newCompleteDate = subtask.complete_date ? null : new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('subtasks')
       .update({
         complete_date: newCompleteDate,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', subtaskId)
-      .select()
-      .single();
+      .eq('task_id', taskId);
 
     if (error) {
       console.error('Error toggling subtask completion:', error);
       throw error;
     }
-
-    return {
-      id: data.id,
-      name: data.name,
-      content: data.content || '',
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
-    };
   },
 
   // Add subtask group
-  async addSubtaskGroup(taskId: string, groupName: string): Promise<SubtaskGroup> {
-    const { data, error } = await supabase
+  async addSubtaskGroup(taskId: string, groupName: string): Promise<void> {
+    const { error } = await supabase
       .from('subtask_groups')
       .insert({
         task_id: taskId,
-        name: groupName
-      })
-      .select()
-      .single();
+        name: groupName,
+      });
 
     if (error) {
-      console.error('Error creating subtask group:', error);
+      console.error('Error adding subtask group:', error);
       throw error;
     }
-
-    return {
-      id: data.id,
-      name: data.name,
-      subtasks: [],
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
-    };
   },
 
   // Delete subtask group
-  async deleteSubtaskGroup(groupId: string): Promise<void> {
+  async deleteSubtaskGroup(taskId: string, groupId: string): Promise<void> {
     const { error } = await supabase
       .from('subtask_groups')
       .delete()
-      .eq('id', groupId);
+      .eq('id', groupId)
+      .eq('task_id', taskId);
 
     if (error) {
       console.error('Error deleting subtask group:', error);
@@ -413,14 +342,15 @@ export const taskService = {
   },
 
   // Move subtask between groups
-  async moveSubtask(subtaskId: string, targetGroupId: string | null): Promise<void> {
+  async moveSubtask(taskId: string, subtaskId: string, sourceGroupId: string | null, targetGroupId: string | null, targetIndex: number): Promise<void> {
     const { error } = await supabase
       .from('subtasks')
       .update({
         subtask_group_id: targetGroupId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', subtaskId);
+      .eq('id', subtaskId)
+      .eq('task_id', taskId);
 
     if (error) {
       console.error('Error moving subtask:', error);

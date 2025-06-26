@@ -1,131 +1,124 @@
 
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Task } from '../types/task';
-import { Calendar, CheckCircle2, Circle, Copy, Edit, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, Clock, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
+import { Task } from '@/types/task';
+import { 
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { Link } from 'react-router-dom';
 
 interface TaskCardProps {
   task: Task;
-  onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
-  onCopy: (taskId: string) => void;
   onComplete: (taskId: string) => void;
-  onOpen: (taskId: string) => void;
+  onClick: (task: Task) => void;
 }
 
-export const TaskCard = ({ task, onEdit, onDelete, onCopy, onComplete, onOpen }: TaskCardProps) => {
-  const totalSubtasks = task.subtasks.length + task.subtaskGroups.reduce((acc, group) => acc + group.subtasks.length, 0);
-  const completedSubtasks = task.subtasks.filter(st => st.completeDate).length + 
-    task.subtaskGroups.reduce((acc, group) => acc + group.subtasks.filter(st => st.completeDate).length, 0);
-
-  const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
+export const TaskCard = ({ task, onComplete, onClick }: TaskCardProps) => {
   const isCompleted = !!task.completeDate;
+  const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
+  
+  const completedSubtasks = [...task.subtasks, ...task.subtaskGroups.flatMap(g => g.subtasks)]
+    .filter(subtask => subtask.completeDate).length;
+  const totalSubtasks = task.subtasks.length + task.subtaskGroups.reduce((acc, g) => acc + g.subtasks.length, 0);
+
+  const handleOpenInNewWindow = () => {
+    window.open(`/task/${task.id}`, '_blank');
+  };
 
   return (
-    <div className={`w-full bg-white border-b border-gray-200 py-4 px-6 transition-all duration-200 hover:bg-gray-50 ${isCompleted ? 'opacity-75' : ''} ${isOverdue ? 'border-l-4 border-l-red-500' : ''}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 flex-1">
-          {/* Completion checkbox */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onComplete(task.id)}
-            className="h-8 w-8 p-0 flex-shrink-0"
-          >
-            {isCompleted ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            ) : (
-              <Circle className="h-5 w-5 text-gray-400" />
-            )}
-          </Button>
-
-          {/* Task content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-1">
-              <h3 className={`font-medium text-gray-900 ${isCompleted ? 'line-through text-gray-500' : ''}`}>
-                {task.name}
-              </h3>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Card 
+          className="w-full hover:bg-gray-50 hover:shadow-sm transition-all duration-200 cursor-pointer border-l-4 border-l-transparent hover:border-l-blue-200"
+          onClick={() => onClick(task)}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onComplete(task.id);
+                  }}
+                  className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-medium text-sm leading-tight truncate ${
+                    isCompleted ? 'line-through text-gray-500' : 'text-gray-900'
+                  }`}>
+                    {task.name}
+                  </h3>
+                  
+                  {task.content && (
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                      {task.content}
+                    </p>
+                  )}
+                  
+                  {totalSubtasks > 0 && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <CheckCircle2 className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs text-gray-500">
+                        {completedSubtasks}/{totalSubtasks} subtasks
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
               
-              {/* Badges */}
-              <div className="flex gap-2">
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                {task.dueDate && (
+                  <Badge 
+                    variant={isOverdue ? "destructive" : "outline"} 
+                    className="text-xs flex items-center gap-1"
+                  >
+                    <Calendar className="h-3 w-3" />
+                    {format(task.dueDate, 'MMM d')}
+                  </Badge>
+                )}
+                
+                {isCompleted && (
+                  <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                    ✓ Done
+                  </Badge>
+                )}
+                
                 {isOverdue && (
-                  <Badge variant="destructive" className="text-xs px-2 py-0 h-5">
+                  <Badge variant="destructive" className="text-xs">
+                    <Clock className="h-3 w-3 mr-1" />
                     Overdue
-                  </Badge>
-                )}
-                
-                {totalSubtasks > 0 && (
-                  <Badge variant="secondary" className="text-xs px-2 py-0 h-5">
-                    {completedSubtasks}/{totalSubtasks}
-                  </Badge>
-                )}
-                
-                {completedSubtasks === totalSubtasks && totalSubtasks > 0 && (
-                  <Badge variant="default" className="text-xs px-2 py-0 h-5 bg-green-100 text-green-800">
-                    Complete
                   </Badge>
                 )}
               </div>
             </div>
-
-            {/* Task description and due date */}
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              {task.content && (
-                <span className="truncate">{task.content}</span>
-              )}
-              
-              {task.dueDate && (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Calendar className="h-3 w-3" />
-                  <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
-                    {format(task.dueDate, 'MMM d, yyyy')}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-1 ml-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpen(task.id)}
-            className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-          >
-            Open
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(task)}
-            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onCopy(task.id)}
-            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(task.id)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
+          </CardContent>
+        </Card>
+      </ContextMenuTrigger>
+      
+      <ContextMenuContent>
+        <ContextMenuItem onClick={handleOpenInNewWindow}>
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Open in New Window
+        </ContextMenuItem>
+        <ContextMenuItem asChild>
+          <Link to={`/task/${task.id}`} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open in New Tab
+          </Link>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
