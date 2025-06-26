@@ -290,9 +290,7 @@ export const TaskDashboard = () => {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      deleteTaskMutation.mutate(taskId);
-    }
+    deleteTaskMutation.mutate(taskId);
   };
 
   const handleToggleComplete = (taskId: string) => {
@@ -370,6 +368,8 @@ export const TaskDashboard = () => {
               task={task}
               onComplete={handleToggleComplete}
               onClick={(task) => handleOpenTask(task.id)}
+              onCopy={handleCopyTask}
+              onDelete={handleDeleteTask}
             />
           ))}
         </div>

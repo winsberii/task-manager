@@ -1,7 +1,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Circle, Calendar, Clock, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, Clock, ExternalLink, Copy, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Task } from '@/types/task';
 import { 
@@ -11,14 +11,17 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 interface TaskCardProps {
   task: Task;
   onComplete: (taskId: string) => void;
   onClick: (task: Task) => void;
+  onCopy?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
 }
 
-export const TaskCard = ({ task, onComplete, onClick }: TaskCardProps) => {
+export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete }: TaskCardProps) => {
   const isCompleted = !!task.completeDate;
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
   
@@ -28,6 +31,18 @@ export const TaskCard = ({ task, onComplete, onClick }: TaskCardProps) => {
 
   const handleOpenInNewWindow = () => {
     window.open(`/task/${task.id}`, '_blank');
+  };
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCopy?.(task.id);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this task?')) {
+      onDelete?.(task.id);
+    }
   };
 
   return (
@@ -79,6 +94,32 @@ export const TaskCard = ({ task, onComplete, onClick }: TaskCardProps) => {
               </div>
               
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                {/* Action buttons */}
+                <div className="flex items-center gap-1">
+                  {onCopy && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopy}
+                      className="h-6 w-6 p-0 hover:bg-gray-200"
+                      title="Copy task"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDelete}
+                      className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600"
+                      title="Delete task"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                
                 {task.dueDate && (
                   <Badge 
                     variant={isOverdue ? "destructive" : "outline"} 
@@ -118,6 +159,18 @@ export const TaskCard = ({ task, onComplete, onClick }: TaskCardProps) => {
             Open in New Tab
           </Link>
         </ContextMenuItem>
+        {onCopy && (
+          <ContextMenuItem onClick={() => onCopy(task.id)}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Task
+          </ContextMenuItem>
+        )}
+        {onDelete && (
+          <ContextMenuItem onClick={() => onDelete(task.id)}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Task
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );
