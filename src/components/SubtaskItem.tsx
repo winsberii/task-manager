@@ -116,11 +116,6 @@ export const SubtaskItem = ({ subtask, onUpdate, onDelete, onComplete }: Subtask
             </div>
             
             <div className="flex gap-2">
-              {subtask.dueDate && (
-                <Badge variant="outline" className="text-xs">
-                  Due {format(subtask.dueDate, 'MMM d')}
-                </Badge>
-              )}
               {isCompleted && (
                 <Badge variant="default" className="text-xs bg-green-100 text-green-800">
                   Completed

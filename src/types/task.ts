@@ -3,6 +3,7 @@ export interface Subtask {
   id: string;
   name: string;
   content: string;
+  dueDate?: Date;
   completeDate?: Date;
   createdAt: Date;
   updatedAt: Date;
