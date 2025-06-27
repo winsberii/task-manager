@@ -5,8 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle, ExternalLink, Copy } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle, ExternalLink, Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Task, SubtaskFormData } from '../types/task';
 import { SubtaskItem } from './SubtaskItem';
 import { format } from 'date-fns';
@@ -33,6 +38,7 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   const [newGroupName, setNewGroupName] = useState('');
   const [showAddSubtaskInGroup, setShowAddSubtaskInGroup] = useState<string | null>(null);
   const [newGroupSubtask, setNewGroupSubtask] = useState({ name: '', content: '' });
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -92,15 +98,6 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     },
   });
 
-  const moveSubtaskMutation = useMutation({
-    mutationFn: ({ subtaskId, targetGroupId }: { subtaskId: string; targetGroupId: string | null }) => 
-      taskService.moveSubtask(subtaskId, targetGroupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
   const completeTaskMutation = useMutation({
     mutationFn: (taskId: string) => taskService.toggleTaskComplete(taskId),
     onSuccess: () => {
@@ -149,34 +146,20 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     completeTaskMutation.mutate(taskId);
   };
 
-  const handleAddSubtaskGroup = (taskId: string, groupName: string) => {
-    addSubtaskGroupMutation.mutate({ taskId, groupName });
-  };
-
   const handleDeleteSubtaskGroup = (groupId: string) => {
     deleteSubtaskGroupMutation.mutate(groupId);
   };
 
-  const handleMoveSubtask = (subtaskId: string, targetGroupId: string | null) => {
-    moveSubtaskMutation.mutate({ subtaskId, targetGroupId });
-  };
-
-  const handleDragEnd = (result: DropResult) => {
-    const { destination, source, draggableId } = result;
-
-    if (!destination) return;
-
-    // If dropped in the same position, do nothing
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
-
-    const targetGroupId = destination.droppableId === 'ungrouped' ? null : destination.droppableId;
-
-    handleMoveSubtask(draggableId, targetGroupId);
+  const toggleGroupExpansion = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId);
+      } else {
+        newSet.add(groupId);
+      }
+      return newSet;
+    });
   };
 
   const copyTaskUrl = () => {
@@ -209,6 +192,12 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
 
     return () => clearInterval(interval);
   }, [task.id, queryClient]);
+
+  useEffect(() => {
+    // Auto-expand all groups initially for better visibility
+    const allGroupIds = new Set(task.subtaskGroups.map(group => group.id));
+    setExpandedGroups(allGroupIds);
+  }, [task.subtaskGroups]);
 
   const isCompleted = !!task.completeDate;
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
@@ -294,9 +283,9 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
         </ContextMenuContent>
       </ContextMenu>
 
-      {/* Subtasks Section */}
+      {/* Compact Subtasks Section */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Subtasks</CardTitle>
             <div className="flex gap-2">
@@ -319,21 +308,23 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="pt-0">
           {/* Add new subtask form */}
           {showAddSubtask && (
-            <Card className="border-dashed">
-              <CardContent className="p-4 space-y-3">
+            <div className="mb-4 p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50">
+              <div className="space-y-2">
                 <Input
                   placeholder="Subtask name..."
                   value={newSubtask.name}
                   onChange={(e) => setNewSubtask(prev => ({ ...prev, name: e.target.value }))}
+                  className="text-sm"
                 />
                 <Textarea
                   placeholder="Subtask description..."
                   value={newSubtask.content}
                   onChange={(e) => setNewSubtask(prev => ({ ...prev, content: e.target.value }))}
                   rows={2}
+                  className="text-sm"
                 />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleAddSubtask}>
@@ -343,18 +334,19 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
                     Cancel
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Add new group form */}
           {showAddGroup && (
-            <Card className="border-dashed">
-              <CardContent className="p-4 space-y-3">
+            <div className="mb-4 p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50">
+              <div className="space-y-2">
                 <Input
                   placeholder="Group name..."
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
+                  className="text-sm"
                 />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleAddGroup}>
@@ -364,179 +356,192 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
                     Cancel
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          <DragDropContext onDragEnd={handleDragEnd}>
-            {/* Ungrouped subtasks */}
+          {/* Compact List View */}
+          <div className="space-y-1">
+            {/* Individual Subtasks */}
             {task.subtasks.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-muted-foreground">Individual Subtasks</h4>
-                <Droppable droppableId="ungrouped">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="space-y-3"
-                    >
-                      {task.subtasks.map((subtask, index) => (
-                        <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
-                          {(provided, snapshot) => (
-                            <ContextMenu>
-                              <ContextMenuTrigger asChild>
-                                <div
-                                  id={`subtask-${subtask.id}`}
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`transition-all duration-200 ${
-                                    snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
-                                  } ${
-                                    highlightSubtaskId === subtask.id ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
-                                  }`}
-                                >
-                                  <SubtaskItem
-                                    subtask={subtask}
-                                    onUpdate={handleUpdateSubtask}
-                                    onDelete={handleDeleteSubtask}
-                                    onComplete={handleCompleteSubtask}
-                                  />
-                                </div>
-                              </ContextMenuTrigger>
-                              
-                              <ContextMenuContent>
-                                <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy Subtask Link
-                                </ContextMenuItem>
-                              </ContextMenuContent>
-                            </ContextMenu>
+              <div className="space-y-1">
+                {task.subtasks.map((subtask) => (
+                  <ContextMenu key={subtask.id}>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        id={`subtask-${subtask.id}`}
+                        className={`flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
+                          highlightSubtaskId === subtask.id ? 'bg-blue-50 border border-blue-200' : ''
+                        }`}
+                      >
+                        <button
+                          onClick={() => handleCompleteSubtask(subtask.id)}
+                          className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
+                        >
+                          {subtask.completeDate ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                           )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <span className={`text-sm block ${
+                            subtask.completeDate ? 'line-through text-gray-500' : 'text-gray-700'
+                          }`}>
+                            {subtask.name}
+                          </span>
+                          {subtask.content && (
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                              {subtask.content}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </ContextMenuTrigger>
+                    
+                    <ContextMenuContent>
+                      <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Subtask Link
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
               </div>
             )}
 
-            {/* Subtask groups */}
-            {task.subtaskGroups.map(group => (
-              <div key={group.id} className="space-y-3">
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">{group.name}</h4>
-                  <div className="flex gap-2">
+            {/* Subtask Groups */}
+            {task.subtaskGroups.map((group) => (
+              <div key={group.id} className="mt-3">
+                {/* Group Header */}
+                <div className="flex items-center justify-between py-2 px-2 hover:bg-gray-50 rounded">
+                  <button
+                    onClick={() => toggleGroupExpansion(group.id)}
+                    className="flex items-center gap-2 flex-1 text-left"
+                  >
+                    {expandedGroups.has(group.id) ? (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className="font-semibold text-gray-900 text-sm">
+                      {group.name}
+                    </span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({group.subtasks.filter(s => s.completeDate).length}/{group.subtasks.length})
+                    </span>
+                  </button>
+                  <div className="flex items-center gap-1">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => setShowAddSubtaskInGroup(group.id)}
+                      className="h-6 px-2 text-xs"
                     >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Subtask
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteSubtaskGroup(group.id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
                     >
-                      Delete Group
+                      Delete
                     </Button>
                   </div>
                 </div>
 
                 {/* Add subtask to group form */}
                 {showAddSubtaskInGroup === group.id && (
-                  <Card className="border-dashed">
-                    <CardContent className="p-4 space-y-3">
+                  <div className="ml-6 mb-2 p-2 border border-dashed border-gray-300 rounded bg-gray-50">
+                    <div className="space-y-2">
                       <Input
                         placeholder="Subtask name..."
                         value={newGroupSubtask.name}
                         onChange={(e) => setNewGroupSubtask(prev => ({ ...prev, name: e.target.value }))}
+                        className="text-sm h-8"
                       />
                       <Textarea
                         placeholder="Subtask description..."
                         value={newGroupSubtask.content}
                         onChange={(e) => setNewGroupSubtask(prev => ({ ...prev, content: e.target.value }))}
                         rows={2}
+                        className="text-sm"
                       />
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleAddSubtaskToGroup(group.id)}>
-                          Add Subtask
+                        <Button size="sm" onClick={() => handleAddSubtaskToGroup(group.id)} className="h-7 text-xs">
+                          Add
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline" 
                           onClick={() => setShowAddSubtaskInGroup(null)}
+                          className="h-7 text-xs"
                         >
                           Cancel
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
 
-                <Droppable droppableId={group.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className={`space-y-3 min-h-[60px] p-3 rounded-lg border-2 border-dashed transition-colors ${
-                        snapshot.isDraggingOver
-                          ? 'border-blue-300 bg-blue-50'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}
-                    >
-                      {group.subtasks.map((subtask, index) => (
-                        <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
-                          {(provided, snapshot) => (
-                            <ContextMenu>
-                              <ContextMenuTrigger asChild>
-                                <div
-                                  id={`subtask-${subtask.id}`}
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`transition-all duration-200 ${
-                                    snapshot.isDragging ? 'rotate-2 scale-105 shadow-lg' : ''
-                                  } ${
-                                    highlightSubtaskId === subtask.id ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
-                                  }`}
-                                >
-                                  <SubtaskItem
-                                    subtask={subtask}
-                                    onUpdate={handleUpdateSubtask}
-                                    onDelete={handleDeleteSubtask}
-                                    onComplete={handleCompleteSubtask}
-                                  />
-                                </div>
-                              </ContextMenuTrigger>
-                              
-                              <ContextMenuContent>
-                                <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy Subtask Link
-                                </ContextMenuItem>
-                              </ContextMenuContent>
-                            </ContextMenu>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                      {group.subtasks.length === 0 && !showAddSubtaskInGroup && (
-                        <div className="text-center text-muted-foreground text-sm py-4">
-                          Drop subtasks here or create new ones
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </Droppable>
+                {/* Group Subtasks */}
+                {expandedGroups.has(group.id) && (
+                  <div className="ml-6 space-y-1 border-l-2 border-gray-100 pl-3">
+                    {group.subtasks.map((subtask) => (
+                      <ContextMenu key={subtask.id}>
+                        <ContextMenuTrigger asChild>
+                          <div
+                            id={`subtask-${subtask.id}`}
+                            className={`flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
+                              highlightSubtaskId === subtask.id ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                          >
+                            <span className="text-gray-400 text-sm mt-0.5">•</span>
+                            <button
+                              onClick={() => handleCompleteSubtask(subtask.id)}
+                              className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
+                            >
+                              {subtask.completeDate ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                              )}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-sm block ${
+                                subtask.completeDate ? 'line-through text-gray-500' : 'text-gray-600'
+                              }`}>
+                                {subtask.name}
+                              </span>
+                              {subtask.content && (
+                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
+                                  {subtask.content}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </ContextMenuTrigger>
+                        
+                        <ContextMenuContent>
+                          <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy Subtask Link
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    ))}
+                    {group.subtasks.length === 0 && (
+                      <div className="text-center text-gray-400 text-xs py-2">
+                        No subtasks in this group yet
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
-          </DragDropContext>
+          </div>
 
           {task.subtasks.length === 0 && task.subtaskGroups.length === 0 && !showAddSubtask && !showAddGroup && (
             <div className="text-center py-8 text-muted-foreground">
