@@ -106,6 +106,13 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     },
   });
 
+  // Filter subtasks to only show those that don't belong to any group
+  const ungroupedSubtasks = task.subtasks.filter(subtask => 
+    !task.subtaskGroups.some(group => 
+      group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+    )
+  );
+
   const handleAddSubtask = () => {
     if (newSubtask.name.trim()) {
       addSubtaskMutation.mutate({ taskId: task.id, data: newSubtask });
@@ -362,10 +369,10 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
 
           {/* Compact List View */}
           <div className="space-y-1">
-            {/* Individual Subtasks */}
-            {task.subtasks.length > 0 && (
+            {/* Individual Subtasks (only ungrouped ones) */}
+            {ungroupedSubtasks.length > 0 && (
               <div className="space-y-1">
-                {task.subtasks.map((subtask) => (
+                {ungroupedSubtasks.map((subtask) => (
                   <ContextMenu key={subtask.id}>
                     <ContextMenuTrigger asChild>
                       <div
@@ -543,7 +550,7 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
             ))}
           </div>
 
-          {task.subtasks.length === 0 && task.subtaskGroups.length === 0 && !showAddSubtask && !showAddGroup && (
+          {ungroupedSubtasks.length === 0 && task.subtaskGroups.length === 0 && !showAddSubtask && !showAddGroup && (
             <div className="text-center py-8 text-muted-foreground">
               <p>No subtasks yet. Add your first subtask to get started!</p>
             </div>
