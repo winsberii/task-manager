@@ -5,14 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle, ExternalLink, Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, CheckCircle2, Circle, ExternalLink, Copy, ChevronDown, ChevronRight, Edit, Save, X } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Task, SubtaskFormData } from '../types/task';
+import { Task, SubtaskFormData, TaskFormData } from '../types/task';
 import { SubtaskItem } from './SubtaskItem';
 import { format } from 'date-fns';
 import { 
@@ -39,6 +39,13 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   const [showAddSubtaskInGroup, setShowAddSubtaskInGroup] = useState<string | null>(null);
   const [newGroupSubtask, setNewGroupSubtask] = useState({ name: '', content: '' });
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [taskEditData, setTaskEditData] = useState({
+    name: task.name,
+    content: task.content || ''
+  });
+  const [subtaskEditData, setSubtaskEditData] = useState<{[key: string]: { name: string; content: string }}>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -103,6 +110,27 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  // Update task mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ taskId, data }: { taskId: string; data: TaskFormData }) => 
+      taskService.updateTask(taskId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Task updated successfully',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update task',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -191,6 +219,163 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     window.open(`/task/${task.id}`, '_blank');
   };
 
+  const handleUpdateTask = () => {
+    if (taskEditData.name.trim()) {
+      updateTaskMutation.mutate({ 
+        taskId: task.id, 
+        data: {
+          name: taskEditData.name,
+          content: taskEditData.content,
+          dueDate: task.dueDate
+        }
+      });
+      setIsEditingTask(false);
+    }
+  };
+
+  const handleCancelTaskEdit = () => {
+    setTaskEditData({
+      name: task.name,
+      content: task.content || ''
+    });
+    setIsEditingTask(false);
+  };
+
+  const handleEditSubtask = (subtaskId: string, subtask: any) => {
+    setEditingSubtaskId(subtaskId);
+    setSubtaskEditData(prev => ({
+      ...prev,
+      [subtaskId]: {
+        name: subtask.name,
+        content: subtask.content || ''
+      }
+    }));
+  };
+
+  const handleUpdateSubtaskInline = (subtaskId: string) => {
+    const editData = subtaskEditData[subtaskId];
+    if (editData && editData.name.trim()) {
+      handleUpdateSubtask(subtaskId, editData);
+      setEditingSubtaskId(null);
+      setSubtaskEditData(prev => {
+        const newData = { ...prev };
+        delete newData[subtaskId];
+        return newData;
+      });
+    }
+  };
+
+  const handleCancelSubtaskEdit = (subtaskId: string) => {
+    setEditingSubtaskId(null);
+    setSubtaskEditData(prev => {
+      const newData = { ...prev };
+      delete newData[subtaskId];
+      return newData;
+    });
+  };
+
+  const renderSubtaskItem = (subtask: any, isGrouped = false) => {
+    const isEditing = editingSubtaskId === subtask.id;
+    const editData = subtaskEditData[subtask.id] || { name: subtask.name, content: subtask.content || '' };
+
+    return (
+      <ContextMenu key={subtask.id}>
+        <ContextMenuTrigger asChild>
+          <div
+            id={`subtask-${subtask.id}`}
+            className={`flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
+              highlightSubtaskId === subtask.id ? 'bg-blue-50 border border-blue-200' : ''
+            }`}
+          >
+            {isGrouped && <span className="text-gray-400 text-sm mt-0.5">•</span>}
+            <button
+              onClick={() => handleCompleteSubtask(subtask.id)}
+              className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
+            >
+              {subtask.completeDate ? (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              ) : (
+                <Circle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              )}
+            </button>
+            
+            {isEditing ? (
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={editData.name}
+                  onChange={(e) => setSubtaskEditData(prev => ({
+                    ...prev,
+                    [subtask.id]: { ...editData, name: e.target.value }
+                  }))}
+                  className="text-sm h-7"
+                />
+                {editData.content !== undefined && (
+                  <Textarea
+                    value={editData.content}
+                    onChange={(e) => setSubtaskEditData(prev => ({
+                      ...prev,
+                      [subtask.id]: { ...editData, content: e.target.value }
+                    }))}
+                    className="text-xs"
+                    rows={2}
+                  />
+                )}
+                <div className="flex gap-1">
+                  <Button size="sm" onClick={() => handleUpdateSubtaskInline(subtask.id)} className="h-6 text-xs">
+                    <Save className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleCancelSubtaskEdit(subtask.id)} className="h-6 text-xs">
+                    <X className="h-3 w-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 min-w-0 group">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <span className={`text-sm block ${
+                      subtask.completeDate ? 'line-through text-gray-500' : isGrouped ? 'text-gray-600' : 'text-gray-700'
+                    }`}>
+                      {subtask.name}
+                    </span>
+                    {subtask.content && (
+                      <p className={`text-xs mt-0.5 line-clamp-1 ${
+                        isGrouped ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {subtask.content}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditSubtask(subtask.id, subtask)}
+                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 transition-opacity"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </ContextMenuTrigger>
+        
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => handleEditSubtask(subtask.id, subtask)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Subtask
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Subtask Link
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
+
   useEffect(() => {
     // Set up real-time sync interval
     const interval = setInterval(() => {
@@ -236,24 +421,65 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className={`text-2xl ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                    {task.name}
-                  </CardTitle>
-                  {task.content && (
-                    <p className="text-muted-foreground mt-2">{task.content}</p>
+                  {isEditingTask ? (
+                    <div className="space-y-3">
+                      <Input
+                        value={taskEditData.name}
+                        onChange={(e) => setTaskEditData(prev => ({ ...prev, name: e.target.value }))}
+                        className="text-xl font-semibold"
+                      />
+                      <Textarea
+                        value={taskEditData.content}
+                        onChange={(e) => setTaskEditData(prev => ({ ...prev, content: e.target.value }))}
+                        placeholder="Task description..."
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <Button onClick={handleUpdateTask}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Changes
+                        </Button>
+                        <Button variant="outline" onClick={handleCancelTaskEdit}>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="group">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className={`text-2xl ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                            {task.name}
+                          </CardTitle>
+                          {task.content && (
+                            <p className="text-muted-foreground mt-2">{task.content}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setIsEditingTask(true)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleCompleteTask(task.id)}
-                  className="h-10 w-10 p-0"
-                >
-                  {isCompleted ? (
-                    <CheckCircle2 className="h-6 w-6 text-green-600" />
-                  ) : (
-                    <Circle className="h-6 w-6" />
-                  )}
-                </Button>
+                {!isEditingTask && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleCompleteTask(task.id)}
+                    className="h-10 w-10 p-0"
+                  >
+                    {isCompleted ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <Circle className="h-6 w-6" />
+                    )}
+                  </Button>
+                )}
               </div>
               
               <div className="flex gap-2 mt-4">
@@ -279,6 +505,10 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
         </ContextMenuTrigger>
         
         <ContextMenuContent>
+          <ContextMenuItem onClick={() => setIsEditingTask(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Task
+          </ContextMenuItem>
           <ContextMenuItem onClick={copyTaskUrl}>
             <Copy className="h-4 w-4 mr-2" />
             Copy Task Link
@@ -372,48 +602,7 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
             {/* Individual Subtasks (only ungrouped ones) */}
             {ungroupedSubtasks.length > 0 && (
               <div className="space-y-1">
-                {ungroupedSubtasks.map((subtask) => (
-                  <ContextMenu key={subtask.id}>
-                    <ContextMenuTrigger asChild>
-                      <div
-                        id={`subtask-${subtask.id}`}
-                        className={`flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
-                          highlightSubtaskId === subtask.id ? 'bg-blue-50 border border-blue-200' : ''
-                        }`}
-                      >
-                        <button
-                          onClick={() => handleCompleteSubtask(subtask.id)}
-                          className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
-                        >
-                          {subtask.completeDate ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Circle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                          )}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <span className={`text-sm block ${
-                            subtask.completeDate ? 'line-through text-gray-500' : 'text-gray-700'
-                          }`}>
-                            {subtask.name}
-                          </span>
-                          {subtask.content && (
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                              {subtask.content}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </ContextMenuTrigger>
-                    
-                    <ContextMenuContent>
-                      <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Subtask Link
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ))}
+                {ungroupedSubtasks.map((subtask) => renderSubtaskItem(subtask, false))}
               </div>
             )}
 
@@ -496,49 +685,7 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
                 {/* Group Subtasks */}
                 {expandedGroups.has(group.id) && (
                   <div className="ml-6 space-y-1 border-l-2 border-gray-100 pl-3">
-                    {group.subtasks.map((subtask) => (
-                      <ContextMenu key={subtask.id}>
-                        <ContextMenuTrigger asChild>
-                          <div
-                            id={`subtask-${subtask.id}`}
-                            className={`flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
-                              highlightSubtaskId === subtask.id ? 'bg-blue-50 border border-blue-200' : ''
-                            }`}
-                          >
-                            <span className="text-gray-400 text-sm mt-0.5">•</span>
-                            <button
-                              onClick={() => handleCompleteSubtask(subtask.id)}
-                              className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
-                            >
-                              {subtask.completeDate ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <Circle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <span className={`text-sm block ${
-                                subtask.completeDate ? 'line-through text-gray-500' : 'text-gray-600'
-                              }`}>
-                                {subtask.name}
-                              </span>
-                              {subtask.content && (
-                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
-                                  {subtask.content}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </ContextMenuTrigger>
-                        
-                        <ContextMenuContent>
-                          <ContextMenuItem onClick={() => copySubtaskUrl(subtask.id)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy Subtask Link
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    ))}
+                    {group.subtasks.map((subtask) => renderSubtaskItem(subtask, true))}
                     {group.subtasks.length === 0 && (
                       <div className="text-center text-gray-400 text-xs py-2">
                         No subtasks in this group yet
