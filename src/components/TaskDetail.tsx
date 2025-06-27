@@ -41,11 +41,13 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [taskEditData, setTaskEditData] = useState({
     name: task.name,
     content: task.content || ''
   });
   const [subtaskEditData, setSubtaskEditData] = useState<{[key: string]: { name: string; content: string }}>({});
+  const [groupEditData, setGroupEditData] = useState<{[key: string]: string}>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -93,6 +95,26 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const updateSubtaskGroupMutation = useMutation({
+    mutationFn: ({ groupId, groupName }: { groupId: string; groupName: string }) => 
+      taskService.updateSubtaskGroup(groupId, groupName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Group updated successfully',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update group',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -270,6 +292,36 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
     setSubtaskEditData(prev => {
       const newData = { ...prev };
       delete newData[subtaskId];
+      return newData;
+    });
+  };
+
+  const handleEditGroup = (groupId: string, groupName: string) => {
+    setEditingGroupId(groupId);
+    setGroupEditData(prev => ({
+      ...prev,
+      [groupId]: groupName
+    }));
+  };
+
+  const handleUpdateGroup = (groupId: string) => {
+    const editData = groupEditData[groupId];
+    if (editData && editData.trim()) {
+      updateSubtaskGroupMutation.mutate({ groupId, groupName: editData });
+      setEditingGroupId(null);
+      setGroupEditData(prev => {
+        const newData = { ...prev };
+        delete newData[groupId];
+        return newData;
+      });
+    }
+  };
+
+  const handleCancelGroupEdit = (groupId: string) => {
+    setEditingGroupId(null);
+    setGroupEditData(prev => {
+      const newData = { ...prev };
+      delete newData[groupId];
       return newData;
     });
   };
@@ -610,43 +662,88 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
             {task.subtaskGroups.map((group) => (
               <div key={group.id} className="mt-3">
                 {/* Group Header */}
-                <div className="flex items-center justify-between py-2 px-2 hover:bg-gray-50 rounded">
-                  <button
-                    onClick={() => toggleGroupExpansion(group.id)}
-                    className="flex items-center gap-2 flex-1 text-left"
-                  >
-                    {expandedGroups.has(group.id) ? (
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className="font-semibold text-gray-900 text-sm">
-                      {group.name}
-                    </span>
-                    <span className="text-xs text-gray-500 ml-2">
-                      ({group.subtasks.filter(s => s.completeDate).length}/{group.subtasks.length})
-                    </span>
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowAddSubtaskInGroup(group.id)}
-                      className="h-6 px-2 text-xs"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteSubtaskGroup(group.id)}
-                      className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
+                    <div className="flex items-center justify-between py-2 px-2 hover:bg-gray-50 rounded group">
+                      <button
+                        onClick={() => toggleGroupExpansion(group.id)}
+                        className="flex items-center gap-2 flex-1 text-left"
+                      >
+                        {expandedGroups.has(group.id) ? (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                        )}
+                        
+                        {editingGroupId === group.id ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              value={groupEditData[group.id] || ''}
+                              onChange={(e) => setGroupEditData(prev => ({
+                                ...prev,
+                                [group.id]: e.target.value
+                              }))}
+                              className="text-sm h-6 font-semibold"
+                              autoFocus
+                            />
+                            <Button size="sm" onClick={() => handleUpdateGroup(group.id)} className="h-6 px-2 text-xs">
+                              <Save className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleCancelGroupEdit(group.id)} className="h-6 px-2 text-xs">
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {group.name}
+                            </span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({group.subtasks.filter(s => s.completeDate).length}/{group.subtasks.length})
+                            </span>
+                          </>
+                        )}
+                      </button>
+                      
+                      {editingGroupId !== group.id && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditGroup(group.id, group.name)}
+                            className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 transition-opacity"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowAddSubtaskInGroup(group.id)}
+                            className="h-6 px-2 text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSubtaskGroup(group.id)}
+                            className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </ContextMenuTrigger>
+                  
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => handleEditGroup(group.id, group.name)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Group Name
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
 
                 {/* Add subtask to group form */}
                 {showAddSubtaskInGroup === group.id && (
