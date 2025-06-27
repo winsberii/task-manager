@@ -323,6 +323,22 @@ export const taskService = {
     }
   },
 
+  // Update subtask group
+  async updateSubtaskGroup(groupId: string, groupName: string): Promise<void> {
+    const { error } = await supabase
+      .from('subtask_groups')
+      .update({
+        name: groupName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', groupId);
+
+    if (error) {
+      console.error('Error updating subtask group:', error);
+      throw error;
+    }
+  },
+
   // Delete subtask group
   async deleteSubtaskGroup(groupId: string): Promise<void> {
     const { error } = await supabase
