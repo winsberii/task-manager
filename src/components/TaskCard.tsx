@@ -1,7 +1,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Circle, Calendar, Clock, ExternalLink, Copy, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, Clock, ExternalLink, Copy, Trash2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { Task } from '@/types/task';
 import { 
@@ -19,9 +19,10 @@ interface TaskCardProps {
   onClick: (task: Task) => void;
   onCopy?: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
+  onEdit?: (task: Task) => void;
 }
 
-export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete }: TaskCardProps) => {
+export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete, onEdit }: TaskCardProps) => {
   const isCompleted = !!task.completeDate;
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
   
@@ -43,6 +44,11 @@ export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete }: TaskCa
     if (confirm('Are you sure you want to delete this task?')) {
       onDelete?.(task.id);
     }
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(task);
   };
 
   return (
@@ -81,6 +87,18 @@ export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete }: TaskCa
                       {task.content}
                     </p>
                   )}
+
+                  {/* Due date display */}
+                  {task.dueDate && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <Calendar className="h-3 w-3 text-gray-400" />
+                      <span className={`text-xs ${
+                        isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'
+                      }`}>
+                        Due {format(task.dueDate, 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                  )}
                   
                   {totalSubtasks > 0 && (
                     <div className="flex items-center gap-1 mt-2">
@@ -96,6 +114,17 @@ export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete }: TaskCa
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 {/* Action buttons */}
                 <div className="flex items-center gap-1">
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleEdit}
+                      className="h-6 w-6 p-0 hover:bg-blue-100 hover:text-blue-600"
+                      title="Edit task"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
                   {onCopy && (
                     <Button
                       variant="ghost"
@@ -149,6 +178,12 @@ export const TaskCard = ({ task, onComplete, onClick, onCopy, onDelete }: TaskCa
       </ContextMenuTrigger>
       
       <ContextMenuContent>
+        {onEdit && (
+          <ContextMenuItem onClick={() => onEdit(task)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Task
+          </ContextMenuItem>
+        )}
         <ContextMenuItem onClick={handleOpenInNewWindow}>
           <ExternalLink className="h-4 w-4 mr-2" />
           Open in New Window

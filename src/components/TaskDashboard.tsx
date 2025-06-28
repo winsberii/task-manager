@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -370,6 +369,7 @@ export const TaskDashboard = () => {
               onClick={(task) => handleOpenTask(task.id)}
               onCopy={handleCopyTask}
               onDelete={handleDeleteTask}
+              onEdit={handleEditTask}
             />
           ))}
         </div>
