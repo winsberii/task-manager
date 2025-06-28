@@ -366,5 +366,50 @@ export const taskService = {
       console.error('Error moving subtask:', error);
       throw error;
     }
+  },
+
+  // New reordering functions
+  async reorderSubtasks(subtaskIds: string[], groupId?: string): Promise<void> {
+    // For now, we'll update the order by updating timestamps
+    // In a production app, you'd want a proper order field in the database
+    const promises = subtaskIds.map((id, index) =>
+      supabase
+        .from('subtasks')
+        .update({
+          updated_at: new Date(Date.now() + index).toISOString(),
+        })
+        .eq('id', id)
+    );
+
+    const results = await Promise.all(promises);
+    
+    for (const result of results) {
+      if (result.error) {
+        console.error('Error reordering subtasks:', result.error);
+        throw result.error;
+      }
+    }
+  },
+
+  async reorderSubtaskGroups(taskId: string, groupIds: string[]): Promise<void> {
+    // For now, we'll update the order by updating timestamps
+    // In a production app, you'd want a proper order field in the database
+    const promises = groupIds.map((id, index) =>
+      supabase
+        .from('subtask_groups')
+        .update({
+          updated_at: new Date(Date.now() + index).toISOString(),
+        })
+        .eq('id', id)
+    );
+
+    const results = await Promise.all(promises);
+    
+    for (const result of results) {
+      if (result.error) {
+        console.error('Error reordering subtask groups:', result.error);
+        throw result.error;
+      }
+    }
   }
 };
