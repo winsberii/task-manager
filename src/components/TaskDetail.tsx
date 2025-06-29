@@ -1,12 +1,13 @@
 
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Task } from '../types/task';
 import { TaskDetailHeader } from './task-detail/TaskDetailHeader';
 import { TaskInfo } from './task-detail/TaskInfo';
 import { SubtasksList } from './task-detail/SubtasksList';
 import { useToast } from '@/hooks/use-toast';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { taskService } from '@/services/taskService';
+import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { createDragEndHandler, createCopySubtaskUrl } from '@/utils/dragHandlers';
 
 interface TaskDetailProps {
   task: Task;
@@ -17,218 +18,30 @@ interface TaskDetailProps {
 export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  const {
+    addSubtaskMutation,
+    updateSubtaskMutation,
+    deleteSubtaskMutation,
+    completeSubtaskMutation,
+    addSubtaskGroupMutation,
+    updateSubtaskGroupMutation,
+    deleteSubtaskGroupMutation,
+    completeTaskMutation,
+    updateTaskMutation,
+    reorderSubtasksMutation,
+    reorderSubtaskGroupsMutation,
+  } = useTaskMutations(task.id);
 
-  // Mutations for real-time sync
-  const addSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, data, subtaskGroupId }: { taskId: string; data: any; subtaskGroupId?: string }) => 
-      taskService.addSubtask(taskId, data, subtaskGroupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
+  const handleDragEnd = createDragEndHandler(
+    task,
+    reorderSubtasksMutation,
+    reorderSubtaskGroupsMutation,
+    queryClient,
+    toast
+  );
 
-  const updateSubtaskMutation = useMutation({
-    mutationFn: ({ subtaskId, data }: { subtaskId: string; data: any }) => 
-      taskService.updateSubtask(subtaskId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const deleteSubtaskMutation = useMutation({
-    mutationFn: (subtaskId: string) => 
-      taskService.deleteSubtask(subtaskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const completeSubtaskMutation = useMutation({
-    mutationFn: (subtaskId: string) => 
-      taskService.toggleSubtaskComplete(subtaskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const addSubtaskGroupMutation = useMutation({
-    mutationFn: ({ taskId, groupName }: { taskId: string; groupName: string }) => 
-      taskService.addSubtaskGroup(taskId, groupName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const updateSubtaskGroupMutation = useMutation({
-    mutationFn: ({ groupId, groupName }: { groupId: string; groupName: string }) => 
-      taskService.updateSubtaskGroup(groupId, groupName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Group updated successfully',
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update group',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteSubtaskGroupMutation = useMutation({
-    mutationFn: (groupId: string) => 
-      taskService.deleteSubtaskGroup(groupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const completeTaskMutation = useMutation({
-    mutationFn: (taskId: string) => taskService.toggleTaskComplete(taskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: any }) => 
-      taskService.updateTask(taskId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Task updated successfully',
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update task',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const reorderSubtasksMutation = useMutation({
-    mutationFn: ({ subtaskIds, groupId }: { subtaskIds: string[]; groupId?: string }) => 
-      taskService.reorderSubtasks(subtaskIds, groupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const reorderSubtaskGroupsMutation = useMutation({
-    mutationFn: ({ taskId, groupIds }: { taskId: string; groupIds: string[] }) => 
-      taskService.reorderSubtaskGroups(taskId, groupIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  const copySubtaskUrl = (subtaskId: string) => {
-    const url = `${window.location.origin}/task/${task.id}/subtask/${subtaskId}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Link copied",
-      description: "Subtask link has been copied to clipboard",
-    });
-  };
-
-  const handleDragEnd = (result: any) => {
-    const { destination, source, type } = result;
-
-    if (!destination) {
-      return;
-    }
-
-    if (destination.droppableId === source.droppableId && destination.index === source.index) {
-      return;
-    }
-
-    // Show optimistic UI feedback
-    toast({
-      title: "Reordering...",
-      description: "Updating order, please wait",
-    });
-
-    if (type === 'subtask-group') {
-      const groupIds = task.subtaskGroups
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map(group => group.id);
-      const [removed] = groupIds.splice(source.index, 1);
-      groupIds.splice(destination.index, 0, removed);
-      
-      reorderSubtaskGroupsMutation.mutate({ taskId: task.id, groupIds });
-    } else if (type === 'subtask') {
-      const sourceGroupId = source.droppableId === 'ungrouped' ? undefined : source.droppableId;
-      const destGroupId = destination.droppableId === 'ungrouped' ? undefined : destination.droppableId;
-
-      if (sourceGroupId === destGroupId) {
-        // Reordering within the same group or ungrouped area
-        const ungroupedSubtasks = task.subtasks
-          .filter(subtask => 
-            !task.subtaskGroups.some(group => 
-              group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
-            )
-          )
-          .sort((a, b) => a.orderIndex - b.orderIndex);
-        
-        const subtasks = sourceGroupId 
-          ? task.subtaskGroups.find(g => g.id === sourceGroupId)?.subtasks.sort((a, b) => a.orderIndex - b.orderIndex) || []
-          : ungroupedSubtasks;
-        
-        const subtaskIds = subtasks.map(s => s.id);
-        const [removed] = subtaskIds.splice(source.index, 1);
-        subtaskIds.splice(destination.index, 0, removed);
-        
-        reorderSubtasksMutation.mutate({ subtaskIds, groupId: sourceGroupId });
-      } else {
-        // Moving between groups
-        const ungroupedSubtasks = task.subtasks
-          .filter(subtask => 
-            !task.subtaskGroups.some(group => 
-              group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
-            )
-          )
-          .sort((a, b) => a.orderIndex - b.orderIndex);
-        
-        const subtaskId = sourceGroupId 
-          ? task.subtaskGroups.find(g => g.id === sourceGroupId)?.subtasks.sort((a, b) => a.orderIndex - b.orderIndex)[source.index]?.id
-          : ungroupedSubtasks[source.index]?.id;
-        
-        if (subtaskId) {
-          taskService.moveSubtask(subtaskId, destGroupId || null, destination.index).then(() => {
-            queryClient.invalidateQueries({ queryKey: ['task', task.id] });
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            toast({
-              title: 'Success',
-              description: 'Subtask moved successfully',
-            });
-          }).catch(() => {
-            toast({
-              title: 'Error',
-              description: 'Failed to move subtask',
-              variant: 'destructive',
-            });
-          });
-        }
-      }
-    }
-  };
+  const copySubtaskUrl = createCopySubtaskUrl(task.id, toast);
 
   useEffect(() => {
     const interval = setInterval(() => {
