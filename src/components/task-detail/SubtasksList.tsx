@@ -9,6 +9,7 @@ import { SubtaskForm } from './SubtaskForm';
 import { SubtaskGroupForm } from './SubtaskGroupForm';
 import { SubtaskGroup } from './SubtaskGroup';
 import { EnhancedSubtaskItem } from './EnhancedSubtaskItem';
+import { DragPlaceholder } from './DragPlaceholder';
 
 interface SubtasksListProps {
   task: Task;
@@ -45,13 +46,27 @@ export const SubtasksList = ({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(task.subtaskGroups.map(g => g.id)));
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupEditData, setGroupEditData] = useState<{[key: string]: string}>({});
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean;
+    dragType: 'subtask' | 'group' | null;
+    dragId: string | null;
+  }>({
+    isDragging: false,
+    dragType: null,
+    dragId: null
+  });
 
-  // Filter subtasks to only show those that don't belong to any group
-  const ungroupedSubtasks = task.subtasks.filter(subtask => 
-    !task.subtaskGroups.some(group => 
-      group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+  // Filter subtasks to only show those that don't belong to any group (sorted by order)
+  const ungroupedSubtasks = task.subtasks
+    .filter(subtask => 
+      !task.subtaskGroups.some(group => 
+        group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+      )
     )
-  );
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  // Sort subtask groups by order
+  const sortedSubtaskGroups = [...task.subtaskGroups].sort((a, b) => a.orderIndex - b.orderIndex);
 
   const toggleGroupExpansion = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -93,6 +108,23 @@ export const SubtasksList = ({
       delete newData[groupId];
       return newData;
     });
+  };
+
+  const handleDragStart = (start: any) => {
+    setDragState({
+      isDragging: true,
+      dragType: start.type === 'subtask-group' ? 'group' : 'subtask',
+      dragId: start.draggableId
+    });
+  };
+
+  const handleDragEnd = (result: any) => {
+    setDragState({
+      isDragging: false,
+      dragType: null,
+      dragId: null
+    });
+    onDragEnd(result);
   };
 
   return (
@@ -143,13 +175,42 @@ export const SubtasksList = ({
           />
         )}
 
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="space-y-1">
             {/* Individual Subtasks (only ungrouped ones) */}
             {ungroupedSubtasks.length > 0 && (
-              <Droppable droppableId="ungrouped" type="subtask">
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
+              <Droppable 
+                droppableId="ungrouped" 
+                type="subtask"
+                renderClone={(provided, snapshot, rubric) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    className={`${snapshot.isDragging ? 'rotate-3 shadow-lg' : ''}`}
+                  >
+                    <EnhancedSubtaskItem
+                      subtask={ungroupedSubtasks[rubric.source.index]}
+                      index={rubric.source.index}
+                      isGrouped={false}
+                      highlightSubtaskId={highlightSubtaskId}
+                      onUpdateSubtask={onUpdateSubtask}
+                      onDeleteSubtask={onDeleteSubtask}
+                      onCompleteSubtask={onCompleteSubtask}
+                      onCopySubtaskUrl={onCopySubtaskUrl}
+                      isDragging={snapshot.isDragging}
+                    />
+                  </div>
+                )}
+              >
+                {(provided, snapshot) => (
+                  <div 
+                    ref={provided.innerRef} 
+                    {...provided.droppableProps} 
+                    className={`space-y-1 transition-colors duration-200 ${
+                      snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-2' : ''
+                    }`}
+                  >
                     {ungroupedSubtasks.map((subtask, index) => (
                       <EnhancedSubtaskItem
                         key={subtask.id}
@@ -164,16 +225,59 @@ export const SubtasksList = ({
                       />
                     ))}
                     {provided.placeholder}
+                    {snapshot.isDraggingOver && (
+                      <DragPlaceholder isDraggingOver={true} />
+                    )}
                   </div>
                 )}
               </Droppable>
             )}
 
             {/* Subtask Groups */}
-            <Droppable droppableId="subtask-groups" type="subtask-group">
-              {(provided) => (
-                <div ref={provided.innerRef} {...provided.droppableProps}>
-                  {task.subtaskGroups.map((group, groupIndex) => (
+            <Droppable 
+              droppableId="subtask-groups" 
+              type="subtask-group"
+              renderClone={(provided, snapshot, rubric) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  className={`${snapshot.isDragging ? 'rotate-1 shadow-xl' : ''}`}
+                >
+                  <SubtaskGroup
+                    group={sortedSubtaskGroups[rubric.source.index]}
+                    index={rubric.source.index}
+                    isExpanded={expandedGroups.has(sortedSubtaskGroups[rubric.source.index].id)}
+                    editingGroupId={editingGroupId}
+                    showAddSubtaskInGroup={showAddSubtaskInGroup}
+                    onToggleExpansion={toggleGroupExpansion}
+                    onEditGroup={handleEditGroup}
+                    onUpdateGroup={handleUpdateGroup}
+                    onCancelGroupEdit={handleCancelGroupEdit}
+                    onDeleteGroup={onDeleteGroup}
+                    onSetShowAddSubtask={setShowAddSubtaskInGroup}
+                    onAddSubtaskToGroup={onAddSubtaskToGroup}
+                    onUpdateSubtask={onUpdateSubtask}
+                    onDeleteSubtask={onDeleteSubtask}
+                    onCompleteSubtask={onCompleteSubtask}
+                    onCopySubtaskUrl={onCopySubtaskUrl}
+                    groupEditData={groupEditData}
+                    onSetGroupEditData={setGroupEditData}
+                    highlightSubtaskId={highlightSubtaskId}
+                    isDragging={snapshot.isDragging}
+                  />
+                </div>
+              )}
+            >
+              {(provided, snapshot) => (
+                <div 
+                  ref={provided.innerRef} 
+                  {...provided.droppableProps}
+                  className={`transition-colors duration-200 ${
+                    snapshot.isDraggingOver ? 'bg-green-50 rounded-lg p-2' : ''
+                  }`}
+                >
+                  {sortedSubtaskGroups.map((group, groupIndex) => (
                     <SubtaskGroup
                       key={group.id}
                       group={group}
@@ -198,6 +302,9 @@ export const SubtasksList = ({
                     />
                   ))}
                   {provided.placeholder}
+                  {snapshot.isDraggingOver && dragState.dragType === 'group' && (
+                    <DragPlaceholder isDraggingOver={true} />
+                  )}
                 </div>
               )}
             </Droppable>
@@ -207,6 +314,15 @@ export const SubtasksList = ({
         {ungroupedSubtasks.length === 0 && task.subtaskGroups.length === 0 && !showAddSubtask && !showAddGroup && (
           <div className="text-center py-8 text-muted-foreground">
             <p>No subtasks yet. Add your first subtask to get started!</p>
+          </div>
+        )}
+
+        {/* Drag feedback overlay */}
+        {dragState.isDragging && (
+          <div className="fixed inset-0 pointer-events-none z-50">
+            <div className="absolute top-4 right-4 bg-black/80 text-white px-3 py-2 rounded-md text-sm">
+              Dragging {dragState.dragType === 'group' ? 'group' : 'subtask'}...
+            </div>
           </div>
         )}
       </CardContent>

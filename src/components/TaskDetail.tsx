@@ -159,8 +159,16 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
       return;
     }
 
+    // Show optimistic UI feedback
+    toast({
+      title: "Reordering...",
+      description: "Updating order, please wait",
+    });
+
     if (type === 'subtask-group') {
-      const groupIds = task.subtaskGroups.map(group => group.id);
+      const groupIds = task.subtaskGroups
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map(group => group.id);
       const [removed] = groupIds.splice(source.index, 1);
       groupIds.splice(destination.index, 0, removed);
       
@@ -170,14 +178,17 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
       const destGroupId = destination.droppableId === 'ungrouped' ? undefined : destination.droppableId;
 
       if (sourceGroupId === destGroupId) {
-        const ungroupedSubtasks = task.subtasks.filter(subtask => 
-          !task.subtaskGroups.some(group => 
-            group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+        // Reordering within the same group or ungrouped area
+        const ungroupedSubtasks = task.subtasks
+          .filter(subtask => 
+            !task.subtaskGroups.some(group => 
+              group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+            )
           )
-        );
+          .sort((a, b) => a.orderIndex - b.orderIndex);
         
         const subtasks = sourceGroupId 
-          ? task.subtaskGroups.find(g => g.id === sourceGroupId)?.subtasks || []
+          ? task.subtaskGroups.find(g => g.id === sourceGroupId)?.subtasks.sort((a, b) => a.orderIndex - b.orderIndex) || []
           : ungroupedSubtasks;
         
         const subtaskIds = subtasks.map(s => s.id);
@@ -186,20 +197,33 @@ export const TaskDetail = ({ task, onBack, highlightSubtaskId }: TaskDetailProps
         
         reorderSubtasksMutation.mutate({ subtaskIds, groupId: sourceGroupId });
       } else {
-        const ungroupedSubtasks = task.subtasks.filter(subtask => 
-          !task.subtaskGroups.some(group => 
-            group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+        // Moving between groups
+        const ungroupedSubtasks = task.subtasks
+          .filter(subtask => 
+            !task.subtaskGroups.some(group => 
+              group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+            )
           )
-        );
+          .sort((a, b) => a.orderIndex - b.orderIndex);
         
         const subtaskId = sourceGroupId 
-          ? task.subtaskGroups.find(g => g.id === sourceGroupId)?.subtasks[source.index]?.id
+          ? task.subtaskGroups.find(g => g.id === sourceGroupId)?.subtasks.sort((a, b) => a.orderIndex - b.orderIndex)[source.index]?.id
           : ungroupedSubtasks[source.index]?.id;
         
         if (subtaskId) {
-          taskService.moveSubtask(subtaskId, destGroupId || null).then(() => {
+          taskService.moveSubtask(subtaskId, destGroupId || null, destination.index).then(() => {
             queryClient.invalidateQueries({ queryKey: ['task', task.id] });
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            toast({
+              title: 'Success',
+              description: 'Subtask moved successfully',
+            });
+          }).catch(() => {
+            toast({
+              title: 'Error',
+              description: 'Failed to move subtask',
+              variant: 'destructive',
+            });
           });
         }
       }

@@ -41,6 +41,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          order_index: number | null
           task_id: string
           updated_at: string
         }
@@ -48,6 +49,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          order_index?: number | null
           task_id: string
           updated_at?: string
         }
@@ -55,6 +57,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          order_index?: number | null
           task_id?: string
           updated_at?: string
         }
@@ -76,6 +79,7 @@ export type Database = {
           due_date: string | null
           id: string
           name: string
+          order_index: number | null
           subtask_group_id: string | null
           task_id: string
           updated_at: string
@@ -87,6 +91,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           name: string
+          order_index?: number | null
           subtask_group_id?: string | null
           task_id: string
           updated_at?: string
@@ -98,6 +103,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           name?: string
+          order_index?: number | null
           subtask_group_id?: string | null
           task_id?: string
           updated_at?: string

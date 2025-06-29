@@ -1,4 +1,3 @@
-
 export interface Subtask {
   id: string;
   name: string;
@@ -7,6 +6,7 @@ export interface Subtask {
   completeDate?: Date;
   createdAt: Date;
   updatedAt: Date;
+  orderIndex: number;
 }
 
 export interface SubtaskGroup {
@@ -15,6 +15,7 @@ export interface SubtaskGroup {
   subtasks: Subtask[];
   createdAt: Date;
   updatedAt: Date;
+  orderIndex: number;
 }
 
 export interface Task {

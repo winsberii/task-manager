@@ -27,25 +27,34 @@ export const taskService = {
       completeDate: task.complete_date ? new Date(task.complete_date) : undefined,
       createdAt: new Date(task.created_at),
       updatedAt: new Date(task.updated_at),
-      subtasks: task.subtasks.map((subtask: any) => ({
-        ...subtask,
-        dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
-        completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
-        createdAt: new Date(subtask.created_at),
-        updatedAt: new Date(subtask.updated_at),
-      })),
-      subtaskGroups: task.subtask_groups.map((group: any) => ({
-        ...group,
-        createdAt: new Date(group.created_at),
-        updatedAt: new Date(group.updated_at),
-        subtasks: group.subtasks.map((subtask: any) => ({
+      subtasks: task.subtasks
+        .map((subtask: any) => ({
           ...subtask,
           dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
           completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
           createdAt: new Date(subtask.created_at),
           updatedAt: new Date(subtask.updated_at),
-        })),
-      })),
+          orderIndex: subtask.order_index ?? 0,
+        }))
+        .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
+      subtaskGroups: task.subtask_groups
+        .map((group: any) => ({
+          ...group,
+          createdAt: new Date(group.created_at),
+          updatedAt: new Date(group.updated_at),
+          orderIndex: group.order_index ?? 0,
+          subtasks: group.subtasks
+            .map((subtask: any) => ({
+              ...subtask,
+              dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
+              completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
+              createdAt: new Date(subtask.created_at),
+              updatedAt: new Date(subtask.updated_at),
+              orderIndex: subtask.order_index ?? 0,
+            }))
+            .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
+        }))
+        .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
     }));
   },
 
@@ -75,25 +84,34 @@ export const taskService = {
       completeDate: task.complete_date ? new Date(task.complete_date) : undefined,
       createdAt: new Date(task.created_at),
       updatedAt: new Date(task.updated_at),
-      subtasks: task.subtasks.map((subtask: any) => ({
-        ...subtask,
-        dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
-        completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
-        createdAt: new Date(subtask.created_at),
-        updatedAt: new Date(subtask.updated_at),
-      })),
-      subtaskGroups: task.subtask_groups.map((group: any) => ({
-        ...group,
-        createdAt: new Date(group.created_at),
-        updatedAt: new Date(group.updated_at),
-        subtasks: group.subtasks.map((subtask: any) => ({
+      subtasks: task.subtasks
+        .map((subtask: any) => ({
           ...subtask,
           dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
           completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
           createdAt: new Date(subtask.created_at),
           updatedAt: new Date(subtask.updated_at),
-        })),
-      })),
+          orderIndex: subtask.order_index ?? 0,
+        }))
+        .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
+      subtaskGroups: task.subtask_groups
+        .map((group: any) => ({
+          ...group,
+          createdAt: new Date(group.created_at),
+          updatedAt: new Date(group.updated_at),
+          orderIndex: group.order_index ?? 0,
+          subtasks: group.subtasks
+            .map((subtask: any) => ({
+              ...subtask,
+              dueDate: subtask.due_date ? new Date(subtask.due_date) : undefined,
+              completeDate: subtask.complete_date ? new Date(subtask.complete_date) : undefined,
+              createdAt: new Date(subtask.created_at),
+              updatedAt: new Date(subtask.updated_at),
+              orderIndex: subtask.order_index ?? 0,
+            }))
+            .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
+        }))
+        .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
     };
   },
 
@@ -232,8 +250,20 @@ export const taskService = {
     };
   },
 
-  // Add subtask
+  // Add subtask with proper order index
   async addSubtask(taskId: string, subtaskData: SubtaskFormData, subtaskGroupId?: string): Promise<void> {
+    // Get the next order index
+    const { data: lastSubtask } = await supabase
+      .from('subtasks')
+      .select('order_index')
+      .eq('task_id', taskId)
+      .eq('subtask_group_id', subtaskGroupId || null)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextOrderIndex = (lastSubtask?.order_index ?? -1) + 1;
+
     const { error } = await supabase
       .from('subtasks')
       .insert({
@@ -241,6 +271,7 @@ export const taskService = {
         subtask_group_id: subtaskGroupId || null,
         name: subtaskData.name,
         content: subtaskData.content,
+        order_index: nextOrderIndex,
       });
 
     if (error) {
@@ -308,13 +339,25 @@ export const taskService = {
     }
   },
 
-  // Add subtask group
+  // Add subtask group with proper order index
   async addSubtaskGroup(taskId: string, groupName: string): Promise<void> {
+    // Get the next order index
+    const { data: lastGroup } = await supabase
+      .from('subtask_groups')
+      .select('order_index')
+      .eq('task_id', taskId)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextOrderIndex = (lastGroup?.order_index ?? -1) + 1;
+
     const { error } = await supabase
       .from('subtask_groups')
       .insert({
         task_id: taskId,
         name: groupName,
+        order_index: nextOrderIndex,
       });
 
     if (error) {
@@ -352,12 +395,38 @@ export const taskService = {
     }
   },
 
-  // Move subtask
-  async moveSubtask(subtaskId: string, targetGroupId: string | null): Promise<void> {
+  // Move subtask with order index management
+  async moveSubtask(subtaskId: string, targetGroupId: string | null, newIndex?: number): Promise<void> {
+    // First, get the current subtask to know its current group
+    const { data: currentSubtask } = await supabase
+      .from('subtasks')
+      .select('subtask_group_id, order_index')
+      .eq('id', subtaskId)
+      .single();
+
+    if (!currentSubtask) {
+      throw new Error('Subtask not found');
+    }
+
+    // If moving to a different group, get the appropriate order index
+    let orderIndex = newIndex;
+    if (orderIndex === undefined) {
+      const { data: lastSubtask } = await supabase
+        .from('subtasks')
+        .select('order_index')
+        .eq('subtask_group_id', targetGroupId)
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .single();
+
+      orderIndex = (lastSubtask?.order_index ?? -1) + 1;
+    }
+
     const { error } = await supabase
       .from('subtasks')
       .update({
         subtask_group_id: targetGroupId,
+        order_index: orderIndex,
         updated_at: new Date().toISOString(),
       })
       .eq('id', subtaskId);
@@ -368,15 +437,14 @@ export const taskService = {
     }
   },
 
-  // New reordering functions
+  // Enhanced reordering functions with proper order index updates
   async reorderSubtasks(subtaskIds: string[], groupId?: string): Promise<void> {
-    // For now, we'll update the order by updating timestamps
-    // In a production app, you'd want a proper order field in the database
     const promises = subtaskIds.map((id, index) =>
       supabase
         .from('subtasks')
         .update({
-          updated_at: new Date(Date.now() + index).toISOString(),
+          order_index: index,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
     );
@@ -392,13 +460,12 @@ export const taskService = {
   },
 
   async reorderSubtaskGroups(taskId: string, groupIds: string[]): Promise<void> {
-    // For now, we'll update the order by updating timestamps
-    // In a production app, you'd want a proper order field in the database
     const promises = groupIds.map((id, index) =>
       supabase
         .from('subtask_groups')
         .update({
-          updated_at: new Date(Date.now() + index).toISOString(),
+          order_index: index,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
     );
