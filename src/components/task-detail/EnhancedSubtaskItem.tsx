@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, Circle, Edit, Save, X, Copy, GripVertical } from 'lucide-react';
+import { CheckCircle2, Circle, Edit, Save, X, Copy } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Draggable } from 'react-beautiful-dnd';
 import { SubtaskFormData } from '@/types/task';
+import { DragHandle } from './DragHandle';
 
 interface EnhancedSubtaskItemProps {
   subtask: any;
@@ -22,6 +23,7 @@ interface EnhancedSubtaskItemProps {
   onDeleteSubtask: (subtaskId: string) => void;
   onCompleteSubtask: (subtaskId: string) => void;
   onCopySubtaskUrl: (subtaskId: string) => void;
+  isDragging?: boolean;
 }
 
 export const EnhancedSubtaskItem = ({
@@ -32,7 +34,8 @@ export const EnhancedSubtaskItem = ({
   onUpdateSubtask,
   onDeleteSubtask,
   onCompleteSubtask,
-  onCopySubtaskUrl
+  onCopySubtaskUrl,
+  isDragging = false
 }: EnhancedSubtaskItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
@@ -74,8 +77,8 @@ export const EnhancedSubtaskItem = ({
           } ${snapshot.isDragging ? 'shadow-lg' : ''}`}
           id={`subtask-${subtask.id}`}
         >
-          <div {...provided.dragHandleProps} className="flex-shrink-0 mt-1 cursor-grab active:cursor-grabbing">
-            <GripVertical className="h-4 w-4 text-gray-400" />
+          <div {...provided.dragHandleProps} className="flex-shrink-0 mt-1">
+            <DragHandle isDragging={snapshot.isDragging} />
           </div>
           
           {isGrouped && <span className="text-gray-400 text-sm mt-0.5">•</span>}

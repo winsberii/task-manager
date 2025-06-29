@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, ChevronDown, ChevronRight, Edit, Save, X, GripVertical } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Edit, Save, X } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -13,6 +13,7 @@ import {
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { SubtaskFormData } from '@/types/task';
 import { EnhancedSubtaskItem } from './EnhancedSubtaskItem';
+import { DragHandle } from './DragHandle';
 
 interface SubtaskGroupProps {
   group: any;
@@ -34,6 +35,7 @@ interface SubtaskGroupProps {
   groupEditData: {[key: string]: string};
   onSetGroupEditData: (data: {[key: string]: string}) => void;
   highlightSubtaskId?: string;
+  isDragging?: boolean;
 }
 
 export const SubtaskGroup = ({
@@ -55,7 +57,8 @@ export const SubtaskGroup = ({
   onCopySubtaskUrl,
   groupEditData,
   onSetGroupEditData,
-  highlightSubtaskId
+  highlightSubtaskId,
+  isDragging = false
 }: SubtaskGroupProps) => {
   const [newGroupSubtask, setNewGroupSubtask] = useState({ name: '', content: '' });
 
@@ -79,8 +82,8 @@ export const SubtaskGroup = ({
             <ContextMenuTrigger asChild>
               <div className="flex items-center justify-between py-2 px-2 hover:bg-gray-50 rounded group">
                 <div className="flex items-center gap-2 flex-1">
-                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
-                    <GripVertical className="h-4 w-4 text-gray-400" />
+                  <div {...provided.dragHandleProps} className="flex-shrink-0">
+                    <DragHandle isDragging={snapshot.isDragging} isGroup={true} />
                   </div>
                   <button
                     onClick={() => onToggleExpansion(group.id)}
