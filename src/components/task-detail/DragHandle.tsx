@@ -1,6 +1,5 @@
 
 import { GripVertical } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface DragHandleProps {
   isDragging?: boolean;
@@ -9,12 +8,10 @@ interface DragHandleProps {
 
 export const DragHandle = ({ isDragging = false, isGroup = false }: DragHandleProps) => {
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <div
       className={`
-        cursor-grab active:cursor-grabbing p-1 h-8 w-8
-        hover:bg-gray-100 transition-colors duration-150
+        cursor-grab active:cursor-grabbing p-1 h-8 w-8 flex items-center justify-center
+        hover:bg-gray-100 transition-colors duration-150 rounded
         ${isDragging ? 'opacity-50' : ''}
         ${isGroup ? 'text-blue-600' : 'text-gray-400'}
         touch-manipulation
@@ -22,6 +19,6 @@ export const DragHandle = ({ isDragging = false, isGroup = false }: DragHandlePr
       style={{ touchAction: 'none' }}
     >
       <GripVertical className="h-4 w-4" />
-    </Button>
+    </div>
   );
 };
