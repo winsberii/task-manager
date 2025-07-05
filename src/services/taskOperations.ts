@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Task, TaskFormData } from "@/types/task";
 import { TaskServiceInterface } from "./types";
@@ -214,6 +215,10 @@ export const taskOperations: TaskServiceInterface = {
     // First get the original task with all its subtasks and groups
     const originalTask = await taskOperations.getTask(taskId);
 
+    // Get the current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     // Create the new task
     const { data, error } = await supabase
       .from('tasks')
@@ -221,7 +226,7 @@ export const taskOperations: TaskServiceInterface = {
         name: `${originalTask.name} (Copy)`,
         content: originalTask.content,
         due_date: originalTask.dueDate ? originalTask.dueDate.toISOString().split('T')[0] : null,
-        user_id: originalTask.user_id || (await supabase.auth.getUser()).data.user?.id
+        user_id: user.id
       })
       .select()
       .single();
