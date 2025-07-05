@@ -208,26 +208,19 @@ export const taskService = {
     }
   },
 
-  // Copy a task
+  // Copy a task with all subtasks and subtask groups
   async copyTask(taskId: string): Promise<Task> {
-    const { data: originalTask, error: fetchError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('id', taskId)
-      .single();
+    // First get the original task with all its subtasks and groups
+    const originalTask = await this.getTask(taskId);
 
-    if (fetchError) {
-      console.error('Error fetching task to copy:', fetchError);
-      throw fetchError;
-    }
-
+    // Create the new task
     const { data, error } = await supabase
       .from('tasks')
       .insert({
         name: `${originalTask.name} (Copy)`,
         content: originalTask.content,
-        due_date: originalTask.due_date,
-        user_id: originalTask.user_id
+        due_date: originalTask.dueDate ? originalTask.dueDate.toISOString().split('T')[0] : null,
+        user_id: originalTask.user_id || (await supabase.auth.getUser()).data.user?.id
       })
       .select()
       .single();
@@ -237,12 +230,84 @@ export const taskService = {
       throw error;
     }
 
+    const newTaskId = data.id;
+
+    // Copy subtask groups with their order
+    const groupIdMapping: { [oldId: string]: string } = {};
+    
+    for (const group of originalTask.subtaskGroups) {
+      const { data: newGroup, error: groupError } = await supabase
+        .from('subtask_groups')
+        .insert({
+          task_id: newTaskId,
+          name: group.name,
+          order_index: group.orderIndex,
+        })
+        .select()
+        .single();
+
+      if (groupError) {
+        console.error('Error copying subtask group:', groupError);
+        throw groupError;
+      }
+
+      groupIdMapping[group.id] = newGroup.id;
+
+      // Copy subtasks within this group
+      for (const subtask of group.subtasks) {
+        const { error: subtaskError } = await supabase
+          .from('subtasks')
+          .insert({
+            task_id: newTaskId,
+            subtask_group_id: newGroup.id,
+            name: subtask.name,
+            content: subtask.content,
+            due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
+            order_index: subtask.orderIndex,
+            // Explicitly set complete_date to null to clear completion status
+            complete_date: null,
+          });
+
+        if (subtaskError) {
+          console.error('Error copying subtask in group:', subtaskError);
+          throw subtaskError;
+        }
+      }
+    }
+
+    // Copy ungrouped subtasks (those not in any group)
+    const ungroupedSubtasks = originalTask.subtasks.filter(subtask => 
+      !originalTask.subtaskGroups.some(group => 
+        group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
+      )
+    );
+
+    for (const subtask of ungroupedSubtasks) {
+      const { error: subtaskError } = await supabase
+        .from('subtasks')
+        .insert({
+          task_id: newTaskId,
+          subtask_group_id: null,
+          name: subtask.name,
+          content: subtask.content,
+          due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
+          order_index: subtask.orderIndex,
+          // Explicitly set complete_date to null to clear completion status
+          complete_date: null,
+        });
+
+      if (subtaskError) {
+        console.error('Error copying ungrouped subtask:', subtaskError);
+        throw subtaskError;
+      }
+    }
+
     return {
       id: data.id,
       name: data.name,
       content: data.content || '',
       dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: data.complete_date ? new Date(data.complete_date) : undefined,
+      completeDate: undefined, // Clear completion status for the copied task
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
       subtasks: [],
