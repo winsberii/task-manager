@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Task, TaskFormData } from "@/types/task";
 import { TaskServiceInterface } from "./types";
@@ -213,7 +212,7 @@ export const taskOperations: TaskServiceInterface = {
   // Copy a task with all subtasks and subtask groups
   async copyTask(taskId: string): Promise<Task> {
     // First get the original task with all its subtasks and groups
-    const originalTask = await this.getTask(taskId);
+    const originalTask = await taskOperations.getTask(taskId);
 
     // Create the new task
     const { data, error } = await supabase
