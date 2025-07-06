@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/ui/markdown-editor';
 
 interface SubtaskFormProps {
   onAdd: (data: { name: string; content: string }) => void;
@@ -21,19 +21,18 @@ export const SubtaskForm = ({ onAdd, onCancel }: SubtaskFormProps) => {
 
   return (
     <div className="mb-4 p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50">
-      <div className="space-y-2">
+      <div className="space-y-3">
         <Input
           placeholder="Subtask name..."
           value={formData.name}
           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
           className="text-sm"
         />
-        <Textarea
-          placeholder="Subtask description..."
+        <MarkdownEditor
           value={formData.content}
-          onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-          rows={2}
-          className="text-sm"
+          onChange={(content) => setFormData(prev => ({ ...prev, content }))}
+          placeholder="Subtask description (Markdown supported)..."
+          rows={3}
         />
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSubmit}>

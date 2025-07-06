@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, Circle, Edit, Save, X, Copy } from 'lucide-react';
 import {
   ContextMenu,
@@ -13,6 +12,8 @@ import {
 import { Draggable } from 'react-beautiful-dnd';
 import { SubtaskFormData } from '@/types/task';
 import { DragHandle } from './DragHandle';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
+import { MarkdownEditor } from '@/components/ui/markdown-editor';
 
 interface EnhancedSubtaskItemProps {
   subtask: any;
@@ -72,7 +73,7 @@ export const EnhancedSubtaskItem = ({
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={`flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
+          className={`flex items-start gap-2 py-2 px-2 rounded hover:bg-gray-50 transition-colors ${
             highlightSubtaskId === subtask.id ? 'bg-blue-50 border border-blue-200' : ''
           } ${snapshot.isDragging ? 'shadow-lg' : ''}`}
           id={`subtask-${subtask.id}`}
@@ -94,20 +95,19 @@ export const EnhancedSubtaskItem = ({
           </button>
           
           {isEditing ? (
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-3">
               <Input
                 value={editData.name}
                 onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
                 className="text-sm h-7"
+                placeholder="Subtask name..."
               />
-              {editData.content !== undefined && (
-                <Textarea
-                  value={editData.content}
-                  onChange={(e) => setEditData(prev => ({ ...prev, content: e.target.value }))}
-                  className="text-xs"
-                  rows={2}
-                />
-              )}
+              <MarkdownEditor
+                value={editData.content}
+                onChange={(content) => setEditData(prev => ({ ...prev, content }))}
+                placeholder="Subtask description (Markdown supported)..."
+                rows={3}
+              />
               <div className="flex gap-1">
                 <Button size="sm" onClick={handleSave} className="h-6 text-xs">
                   <Save className="h-3 w-3 mr-1" />
@@ -124,18 +124,22 @@ export const EnhancedSubtaskItem = ({
               <ContextMenuTrigger asChild>
                 <div className="flex-1 min-w-0 group">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <span className={`text-sm block ${
                         subtask.completeDate ? 'line-through text-gray-500' : isGrouped ? 'text-gray-600' : 'text-gray-700'
                       }`}>
                         {subtask.name}
                       </span>
                       {subtask.content && (
-                        <p className={`text-xs mt-0.5 line-clamp-1 ${
+                        <div className={`mt-1 ${
                           isGrouped ? 'text-gray-400' : 'text-gray-500'
                         }`}>
-                          {subtask.content}
-                        </p>
+                          <MarkdownRenderer 
+                            content={subtask.content} 
+                            compact={true}
+                            className="text-xs"
+                          />
+                        </div>
                       )}
                     </div>
                     <Button

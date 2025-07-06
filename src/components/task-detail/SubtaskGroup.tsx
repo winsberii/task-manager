@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Plus, ChevronDown, ChevronRight, Edit, Save, X } from 'lucide-react';
 import {
   ContextMenu,
@@ -14,6 +13,7 @@ import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { SubtaskFormData } from '@/types/task';
 import { EnhancedSubtaskItem } from './EnhancedSubtaskItem';
 import { DragHandle } from './DragHandle';
+import { MarkdownEditor } from '@/components/ui/markdown-editor';
 
 interface SubtaskGroupProps {
   group: any;
@@ -168,20 +168,19 @@ export const SubtaskGroup = ({
 
           {/* Add subtask to group form */}
           {showAddSubtaskInGroup === group.id && (
-            <div className="ml-6 mb-2 p-2 border border-dashed border-gray-300 rounded bg-gray-50">
-              <div className="space-y-2">
+            <div className="ml-6 mb-2 p-3 border border-dashed border-gray-300 rounded bg-gray-50">
+              <div className="space-y-3">
                 <Input
                   placeholder="Subtask name..."
                   value={newGroupSubtask.name}
                   onChange={(e) => setNewGroupSubtask(prev => ({ ...prev, name: e.target.value }))}
                   className="text-sm h-8"
                 />
-                <Textarea
-                  placeholder="Subtask description..."
+                <MarkdownEditor
                   value={newGroupSubtask.content}
-                  onChange={(e) => setNewGroupSubtask(prev => ({ ...prev, content: e.target.value }))}
-                  rows={2}
-                  className="text-sm"
+                  onChange={(content) => setNewGroupSubtask(prev => ({ ...prev, content }))}
+                  placeholder="Subtask description (Markdown supported)..."
+                  rows={3}
                 />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleAddSubtaskToGroup} className="h-7 text-xs">

@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, Edit, Trash2, Save, X } from 'lucide-react';
 import { Subtask, SubtaskFormData } from '../types/task';
-import { format } from 'date-fns';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
+import { MarkdownEditor } from '@/components/ui/markdown-editor';
 
 interface SubtaskItemProps {
   subtask: Subtask;
@@ -50,11 +50,11 @@ export const SubtaskItem = ({ subtask, onUpdate, onDelete, onComplete }: Subtask
               onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="Subtask name..."
             />
-            <Textarea
+            <MarkdownEditor
               value={editData.content}
-              onChange={(e) => setEditData(prev => ({ ...prev, content: e.target.value }))}
-              placeholder="Subtask description..."
-              rows={2}
+              onChange={(content) => setEditData(prev => ({ ...prev, content }))}
+              placeholder="Subtask description (Markdown supported)..."
+              rows={3}
             />
             <div className="flex gap-2">
               <Button size="sm" onClick={handleSave}>
@@ -75,9 +75,12 @@ export const SubtaskItem = ({ subtask, onUpdate, onDelete, onComplete }: Subtask
                   {subtask.name}
                 </h4>
                 {subtask.content && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {subtask.content}
-                  </p>
+                  <div className="mt-2">
+                    <MarkdownRenderer 
+                      content={subtask.content}
+                      className="text-sm text-muted-foreground"
+                    />
+                  </div>
                 )}
               </div>
               
