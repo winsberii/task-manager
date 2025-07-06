@@ -34,6 +34,10 @@ export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit }: TaskCar
     window.open(`/task/${task.id}`, '_blank');
   };
 
+  const handleCardClick = () => {
+    window.location.href = `/task/${task.id}`;
+  };
+
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -63,7 +67,7 @@ export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit }: TaskCar
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <Link to={`/task/${task.id}`} className="block">
+        <div onClick={handleCardClick}>
           <Card 
             className="w-full hover:bg-gray-50 hover:shadow-sm transition-all duration-200 cursor-pointer border-l-4 border-l-transparent hover:border-l-blue-200"
           >
@@ -181,7 +185,7 @@ export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit }: TaskCar
               </div>
             </CardContent>
           </Card>
-        </Link>
+        </div>
       </ContextMenuTrigger>
       
       <ContextMenuContent>
