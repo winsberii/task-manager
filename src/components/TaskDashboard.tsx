@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
 import { taskService } from '@/services/taskService';
-import { TaskCard } from '@/components/TaskCard';
 import { TaskForm } from '@/components/TaskForm';
 import { TaskDetail } from '@/components/TaskDetail';
-import { TagFilter } from '@/components/tag/TagFilter';
-import { Task, TaskFormData, SubtaskFormData } from '@/types/task';
-import { useToast } from '@/hooks/use-toast';
+import { TaskFilters } from '@/components/task-dashboard/TaskFilters';
+import { TaskList } from '@/components/task-dashboard/TaskList';
+import { useTaskMutations } from '@/components/task-dashboard/useTaskMutations';
+import { Task, TaskFormData } from '@/types/task';
 
 type CompletionFilter = 'uncompleted' | 'completed' | 'all';
 
@@ -19,8 +19,14 @@ export const TaskDashboard = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('uncompleted');
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+
+  const {
+    createTaskMutation,
+    updateTaskMutation,
+    deleteTaskMutation,
+    toggleCompleteMutation,
+    copyTaskMutation,
+  } = useTaskMutations();
 
   // Fetch tasks
   const { data: tasks = [], isLoading, error } = useQuery({
@@ -54,264 +60,22 @@ export const TaskDashboard = () => {
     return passesCompletionFilter && passesTagFilter;
   });
 
-  // Create task mutation
-  const createTaskMutation = useMutation({
-    mutationFn: taskService.createTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Task created successfully',
-      });
-      setIsFormOpen(false);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to create task',
-        variant: 'destructive',
-      });
-      console.error('Create task error:', error);
-    },
-  });
-
-  // Update task mutation
-  const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, taskData }: { taskId: string; taskData: TaskFormData }) =>
-      taskService.updateTask(taskId, taskData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Task updated successfully',
-      });
-      setEditingTask(null);
-      setIsFormOpen(false);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update task',
-        variant: 'destructive',
-      });
-      console.error('Update task error:', error);
-    },
-  });
-
-  // Delete task mutation
-  const deleteTaskMutation = useMutation({
-    mutationFn: taskService.deleteTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Task deleted successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete task',
-        variant: 'destructive',
-      });
-      console.error('Delete task error:', error);
-    },
-  });
-
-  // Toggle task completion mutation
-  const toggleCompleteMutation = useMutation({
-    mutationFn: taskService.toggleTaskComplete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Task status updated',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update task status',
-        variant: 'destructive',
-      });
-      console.error('Toggle complete error:', error);
-    },
-  });
-
-  // Copy task mutation
-  const copyTaskMutation = useMutation({
-    mutationFn: taskService.copyTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Task copied successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to copy task',
-        variant: 'destructive',
-      });
-      console.error('Copy task error:', error);
-    },
-  });
-
-  // Add subtask mutation
-  const addSubtaskMutation = useMutation({
-    mutationFn: ({ taskId, subtaskData, subtaskGroupId }: { 
-      taskId: string; 
-      subtaskData: SubtaskFormData; 
-      subtaskGroupId?: string 
-    }) => taskService.addSubtask(taskId, subtaskData, subtaskGroupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask added successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to add subtask',
-        variant: 'destructive',
-      });
-      console.error('Add subtask error:', error);
-    },
-  });
-
-  // Update subtask mutation
-  const updateSubtaskMutation = useMutation({
-    mutationFn: ({ subtaskId, subtaskData }: { subtaskId: string; subtaskData: SubtaskFormData }) =>
-      taskService.updateSubtask(subtaskId, subtaskData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask updated successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update subtask',
-        variant: 'destructive',
-      });
-      console.error('Update subtask error:', error);
-    },
-  });
-
-  // Delete subtask mutation
-  const deleteSubtaskMutation = useMutation({
-    mutationFn: (subtaskId: string) => taskService.deleteSubtask(subtaskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask deleted successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete subtask',
-        variant: 'destructive',
-      });
-      console.error('Delete subtask error:', error);
-    },
-  });
-
-  // Toggle subtask completion mutation
-  const toggleSubtaskCompleteMutation = useMutation({
-    mutationFn: (subtaskId: string) => taskService.toggleSubtaskComplete(subtaskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask status updated',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update subtask status',
-        variant: 'destructive',
-      });
-      console.error('Toggle subtask complete error:', error);
-    },
-  });
-
-  // Add subtask group mutation
-  const addSubtaskGroupMutation = useMutation({
-    mutationFn: ({ taskId, groupName }: { taskId: string; groupName: string }) =>
-      taskService.addSubtaskGroup(taskId, groupName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask group added successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to add subtask group',
-        variant: 'destructive',
-      });
-      console.error('Add subtask group error:', error);
-    },
-  });
-
-  // Delete subtask group mutation
-  const deleteSubtaskGroupMutation = useMutation({
-    mutationFn: (groupId: string) => taskService.deleteSubtaskGroup(groupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask group deleted successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete subtask group',
-        variant: 'destructive',
-      });
-      console.error('Delete subtask group error:', error);
-    },
-  });
-
-  // Move subtask mutation
-  const moveSubtaskMutation = useMutation({
-    mutationFn: ({ subtaskId, targetGroupId }: { subtaskId: string; targetGroupId: string | null }) =>
-      taskService.moveSubtask(subtaskId, targetGroupId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast({
-        title: 'Success',
-        description: 'Subtask moved successfully',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to move subtask',
-        variant: 'destructive',
-      });
-      console.error('Move subtask error:', error);
-    },
-  });
-
   const handleCreateTask = (taskData: TaskFormData) => {
-    createTaskMutation.mutate(taskData);
+    createTaskMutation.mutate(taskData, {
+      onSuccess: () => {
+        setIsFormOpen(false);
+      },
+    });
   };
 
   const handleUpdateTask = (taskData: TaskFormData) => {
     if (editingTask) {
-      updateTaskMutation.mutate({ taskId: editingTask.id, taskData });
+      updateTaskMutation.mutate({ taskId: editingTask.id, taskData }, {
+        onSuccess: () => {
+          setEditingTask(null);
+          setIsFormOpen(false);
+        },
+      });
     }
   };
 
@@ -391,69 +155,27 @@ export const TaskDashboard = () => {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Completion Filter */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="completion-filter" className="text-sm font-medium text-gray-700">
-            Status:
-          </label>
-          <Select value={completionFilter} onValueChange={(value: CompletionFilter) => setCompletionFilter(value)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="uncompleted">Uncompleted</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="all">All Tasks</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <TaskFilters
+        completionFilter={completionFilter}
+        onCompletionFilterChange={setCompletionFilter}
+        tags={tags}
+        selectedTagIds={selectedTagIds}
+        onTagFilterChange={setSelectedTagIds}
+      />
 
-        {/* Tag Filter */}
-        {tags.length > 0 && (
-          <div className="flex-1">
-            <TagFilter
-              tags={tags}
-              selectedTagIds={selectedTagIds}
-              onFilterChange={setSelectedTagIds}
-            />
-          </div>
-        )}
-      </div>
-
-      {filteredTasks.length === 0 ? (
-        <div className="text-center py-12">
-          {selectedTagIds.length > 0 || completionFilter !== 'all' ? (
-            <p className="text-gray-500 mb-4">No tasks found with the current filters.</p>
-          ) : tasks.length === 0 ? (
-            <>
-              <p className="text-gray-500 mb-4">No tasks yet. Create your first task to get started!</p>
-              <Button onClick={() => setIsFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Task
-              </Button>
-            </>
-          ) : (
-            <p className="text-gray-500 mb-4">No tasks match the current filters.</p>
-          )}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onComplete={handleToggleComplete}
-              onClick={(task) => handleOpenTask(task.id)}
-              onCopy={handleCopyTask}
-              onDelete={handleDeleteTask}
-              onEdit={handleEditTask}
-              onTagClick={handleTagClick}
-            />
-          ))}
-        </div>
-      )}
+      <TaskList
+        tasks={tasks}
+        filteredTasks={filteredTasks}
+        selectedTagIds={selectedTagIds}
+        completionFilter={completionFilter}
+        onToggleComplete={handleToggleComplete}
+        onOpenTask={handleOpenTask}
+        onCopyTask={handleCopyTask}
+        onDeleteTask={handleDeleteTask}
+        onEditTask={handleEditTask}
+        onTagClick={handleTagClick}
+        onCreateTask={() => setIsFormOpen(true)}
+      />
 
       <TaskForm
         isOpen={isFormOpen}
