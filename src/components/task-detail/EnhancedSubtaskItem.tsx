@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Circle, Edit, Save, X, Copy } from 'lucide-react';
+import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -14,6 +14,7 @@ import { SubtaskFormData } from '@/types/task';
 import { DragHandle } from './DragHandle';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
+import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedSubtaskItemProps {
   subtask: any;
@@ -43,6 +44,7 @@ export const EnhancedSubtaskItem = ({
     name: subtask.name,
     content: subtask.content || ''
   });
+  const { toast } = useToast();
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -65,6 +67,31 @@ export const EnhancedSubtaskItem = ({
       content: subtask.content || ''
     });
     setIsEditing(false);
+  };
+
+  const handleCopyDescription = async () => {
+    if (!subtask.content?.trim()) {
+      toast({
+        title: "No description to copy",
+        description: "This subtask doesn't have a description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(subtask.content);
+      toast({
+        title: "Description copied!",
+        description: "The subtask description has been copied to your clipboard.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy the description to clipboard.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -158,6 +185,13 @@ export const EnhancedSubtaskItem = ({
                 <ContextMenuItem onClick={handleEdit}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Subtask
+                </ContextMenuItem>
+                <ContextMenuItem 
+                  onClick={handleCopyDescription}
+                  disabled={!subtask.content?.trim()}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Copy Description
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => onCopySubtaskUrl(subtask.id)}>
                   <Copy className="h-4 w-4 mr-2" />
