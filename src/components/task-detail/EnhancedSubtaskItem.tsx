@@ -169,14 +169,27 @@ export const EnhancedSubtaskItem = ({
                         </div>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleEdit}
-                      className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 transition-opacity"
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleEdit}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      {subtask.content?.trim() && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCopyDescription}
+                          className="h-6 w-6 p-0"
+                          title="Copy Description"
+                        >
+                          <FileText className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </ContextMenuTrigger>
