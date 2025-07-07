@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
 import { taskService } from '@/services/taskService';
 import { TaskCard } from '@/components/TaskCard';
@@ -10,11 +11,14 @@ import { TagFilter } from '@/components/tag/TagFilter';
 import { Task, TaskFormData, SubtaskFormData } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 
+type CompletionFilter = 'uncompleted' | 'completed' | 'all';
+
 export const TaskDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('uncompleted');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -30,12 +34,25 @@ export const TaskDashboard = () => {
     queryFn: taskService.getTags,
   });
 
-  // Filter tasks by selected tags
-  const filteredTasks = selectedTagIds.length > 0 
-    ? tasks.filter(task => 
-        task.tags.some(tag => selectedTagIds.includes(tag.id))
-      )
-    : tasks;
+  // Filter tasks by completion status and selected tags
+  const filteredTasks = tasks.filter(task => {
+    // Filter by completion status
+    const isCompleted = !!task.completeDate;
+    let passesCompletionFilter = true;
+    
+    if (completionFilter === 'completed') {
+      passesCompletionFilter = isCompleted;
+    } else if (completionFilter === 'uncompleted') {
+      passesCompletionFilter = !isCompleted;
+    }
+    // For 'all', passesCompletionFilter remains true
+    
+    // Filter by selected tags
+    const passesTagFilter = selectedTagIds.length === 0 || 
+      task.tags.some(tag => selectedTagIds.includes(tag.id));
+    
+    return passesCompletionFilter && passesTagFilter;
+  });
 
   // Create task mutation
   const createTaskMutation = useMutation({
@@ -374,19 +391,41 @@ export const TaskDashboard = () => {
         </Button>
       </div>
 
-      {/* Tag Filter */}
-      {tags.length > 0 && (
-        <TagFilter
-          tags={tags}
-          selectedTagIds={selectedTagIds}
-          onFilterChange={setSelectedTagIds}
-        />
-      )}
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Completion Filter */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="completion-filter" className="text-sm font-medium text-gray-700">
+            Status:
+          </label>
+          <Select value={completionFilter} onValueChange={(value: CompletionFilter) => setCompletionFilter(value)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="uncompleted">Uncompleted</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="all">All Tasks</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Tag Filter */}
+        {tags.length > 0 && (
+          <div className="flex-1">
+            <TagFilter
+              tags={tags}
+              selectedTagIds={selectedTagIds}
+              onFilterChange={setSelectedTagIds}
+            />
+          </div>
+        )}
+      </div>
 
       {filteredTasks.length === 0 ? (
         <div className="text-center py-12">
-          {selectedTagIds.length > 0 ? (
-            <p className="text-gray-500 mb-4">No tasks found with the selected tags.</p>
+          {selectedTagIds.length > 0 || completionFilter !== 'all' ? (
+            <p className="text-gray-500 mb-4">No tasks found with the current filters.</p>
           ) : tasks.length === 0 ? (
             <>
               <p className="text-gray-500 mb-4">No tasks yet. Create your first task to get started!</p>
