@@ -2,6 +2,7 @@
 import { taskOperations } from "./taskOperations";
 import { subtaskOperations } from "./subtaskOperations";
 import { subtaskGroupOperations } from "./subtaskGroupOperations";
+import { tagOperations } from "./tagOperations";
 
 export const taskService = {
   // Task operations
@@ -12,4 +13,7 @@ export const taskService = {
   
   // Subtask group operations
   ...subtaskGroupOperations,
+  
+  // Tag operations
+  ...tagOperations,
 };

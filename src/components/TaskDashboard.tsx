@@ -6,6 +6,7 @@ import { taskService } from '@/services/taskService';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskForm } from '@/components/TaskForm';
 import { TaskDetail } from '@/components/TaskDetail';
+import { TagFilter } from '@/components/tag/TagFilter';
 import { Task, TaskFormData, SubtaskFormData } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 
@@ -13,6 +14,7 @@ export const TaskDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -21,6 +23,19 @@ export const TaskDashboard = () => {
     queryKey: ['tasks'],
     queryFn: taskService.getTasks,
   });
+
+  // Fetch tags
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: taskService.getTags,
+  });
+
+  // Filter tasks by selected tags
+  const filteredTasks = selectedTagIds.length > 0 
+    ? tasks.filter(task => 
+        task.tags.some(tag => selectedTagIds.includes(tag.id))
+      )
+    : tasks;
 
   // Create task mutation
   const createTaskMutation = useMutation({
@@ -309,6 +324,14 @@ export const TaskDashboard = () => {
     setEditingTask(null);
   };
 
+  const handleTagClick = (tagId: string) => {
+    if (selectedTagIds.includes(tagId)) {
+      setSelectedTagIds(selectedTagIds.filter(id => id !== tagId));
+    } else {
+      setSelectedTagIds([tagId]);
+    }
+  };
+
   const selectedTask = tasks.find(task => task.id === selectedTaskId);
 
   if (selectedTask) {
@@ -351,17 +374,34 @@ export const TaskDashboard = () => {
         </Button>
       </div>
 
-      {tasks.length === 0 ? (
+      {/* Tag Filter */}
+      {tags.length > 0 && (
+        <TagFilter
+          tags={tags}
+          selectedTagIds={selectedTagIds}
+          onFilterChange={setSelectedTagIds}
+        />
+      )}
+
+      {filteredTasks.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No tasks yet. Create your first task to get started!</p>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Your First Task
-          </Button>
+          {selectedTagIds.length > 0 ? (
+            <p className="text-gray-500 mb-4">No tasks found with the selected tags.</p>
+          ) : tasks.length === 0 ? (
+            <>
+              <p className="text-gray-500 mb-4">No tasks yet. Create your first task to get started!</p>
+              <Button onClick={() => setIsFormOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Task
+              </Button>
+            </>
+          ) : (
+            <p className="text-gray-500 mb-4">No tasks match the current filters.</p>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -370,6 +410,7 @@ export const TaskDashboard = () => {
               onCopy={handleCopyTask}
               onDelete={handleDeleteTask}
               onEdit={handleEditTask}
+              onTagClick={handleTagClick}
             />
           ))}
         </div>

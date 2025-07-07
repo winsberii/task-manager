@@ -17,9 +17,10 @@ interface TaskCardProps {
   onCopy?: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
   onEdit?: (task: Task) => void;
+  onTagClick?: (tagId: string) => void;
 }
 
-export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit }: TaskCardProps) => {
+export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit, onTagClick }: TaskCardProps) => {
   const isCompleted = !!task.completeDate;
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
 
@@ -55,6 +56,7 @@ export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit }: TaskCar
                     task={task}
                     isCompleted={isCompleted}
                     isOverdue={isOverdue}
+                    onTagClick={onTagClick}
                   />
                 </div>
               </div>

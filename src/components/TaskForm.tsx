@@ -11,6 +11,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Task, TaskFormData } from '../types/task';
+import { TagSelector } from './tag/TagSelector';
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -23,7 +24,8 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task }: TaskFormProps) => 
   const [formData, setFormData] = useState<TaskFormData>({
     name: '',
     content: '',
-    dueDate: undefined
+    dueDate: undefined,
+    tagIds: []
   });
   const [errors, setErrors] = useState<{ name?: string }>({});
 
@@ -32,13 +34,15 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task }: TaskFormProps) => 
       setFormData({
         name: task.name,
         content: task.content || '',
-        dueDate: task.dueDate
+        dueDate: task.dueDate,
+        tagIds: task.tags?.map(tag => tag.id) || []
       });
     } else {
       setFormData({
         name: '',
         content: '',
-        dueDate: undefined
+        dueDate: undefined,
+        tagIds: []
       });
     }
     setErrors({});
@@ -62,7 +66,7 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task }: TaskFormProps) => 
     onClose();
   };
 
-  const handleChange = (field: keyof TaskFormData, value: string | Date | undefined) => {
+  const handleChange = (field: keyof TaskFormData, value: string | Date | undefined | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field as keyof typeof errors]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
@@ -127,6 +131,14 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task }: TaskFormProps) => 
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tags</Label>
+            <TagSelector
+              selectedTagIds={formData.tagIds || []}
+              onTagsChange={(tagIds) => handleChange('tagIds', tagIds)}
+            />
           </div>
 
           <DialogFooter>

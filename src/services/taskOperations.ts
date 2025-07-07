@@ -1,10 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Task, TaskFormData } from "@/types/task";
 import { TaskServiceInterface } from "./types";
 
 export const taskOperations: TaskServiceInterface = {
-  // Get all tasks for the current user with subtasks and subtask groups
+  // Get all tasks for the current user with subtasks, subtask groups, and tags
   async getTasks(): Promise<Task[]> {
     const { data: tasks, error } = await supabase
       .from('tasks')
@@ -14,6 +13,9 @@ export const taskOperations: TaskServiceInterface = {
         subtask_groups (
           *,
           subtasks (*)
+        ),
+        task_tags (
+          tags (*)
         )
       `)
       .order('created_at', { ascending: false });
@@ -57,6 +59,11 @@ export const taskOperations: TaskServiceInterface = {
             .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
         }))
         .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
+      tags: task.task_tags?.map((taskTag: any) => ({
+        ...taskTag.tags,
+        createdAt: new Date(taskTag.tags.created_at),
+        updatedAt: new Date(taskTag.tags.updated_at),
+      })) || [],
     }));
   },
 
@@ -70,6 +77,9 @@ export const taskOperations: TaskServiceInterface = {
         subtask_groups (
           *,
           subtasks (*)
+        ),
+        task_tags (
+          tags (*)
         )
       `)
       .eq('id', taskId)
@@ -114,6 +124,11 @@ export const taskOperations: TaskServiceInterface = {
             .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
         }))
         .sort((a: any, b: any) => a.orderIndex - b.orderIndex),
+      tags: task.task_tags?.map((taskTag: any) => ({
+        ...taskTag.tags,
+        createdAt: new Date(taskTag.tags.created_at),
+        updatedAt: new Date(taskTag.tags.updated_at),
+      })) || [],
     };
   },
 
@@ -138,6 +153,12 @@ export const taskOperations: TaskServiceInterface = {
       throw error;
     }
 
+    // Add tags if provided
+    if (data.tagIds && data.tagIds.length > 0) {
+      const { tagOperations } = await import('./tagOperations');
+      await tagOperations.addTagsToTask(task.id, data.tagIds);
+    }
+
     return {
       ...task,
       dueDate: task.due_date ? new Date(task.due_date) : undefined,
@@ -146,6 +167,7 @@ export const taskOperations: TaskServiceInterface = {
       updatedAt: new Date(task.updated_at),
       subtasks: [],
       subtaskGroups: [],
+      tags: [],
     };
   },
 
@@ -164,6 +186,12 @@ export const taskOperations: TaskServiceInterface = {
     if (error) {
       console.error('Error updating task:', error);
       throw error;
+    }
+
+    // Update tags if provided
+    if (data.tagIds !== undefined) {
+      const { tagOperations } = await import('./tagOperations');
+      await tagOperations.updateTaskTags(taskId, data.tagIds);
     }
   },
 
@@ -212,14 +240,11 @@ export const taskOperations: TaskServiceInterface = {
 
   // Copy a task with all subtasks and subtask groups
   async copyTask(taskId: string): Promise<Task> {
-    // First get the original task with all its subtasks and groups
     const originalTask = await taskOperations.getTask(taskId);
 
-    // Get the current authenticated user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Create the new task
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -238,7 +263,12 @@ export const taskOperations: TaskServiceInterface = {
 
     const newTaskId = data.id;
 
-    // Copy subtask groups with their order
+    // Copy tags
+    if (originalTask.tags.length > 0) {
+      const { tagOperations } = await import('./tagOperations');
+      await tagOperations.addTagsToTask(newTaskId, originalTask.tags.map(tag => tag.id));
+    }
+
     const groupIdMapping: { [oldId: string]: string } = {};
     
     for (const group of originalTask.subtaskGroups) {
@@ -259,7 +289,6 @@ export const taskOperations: TaskServiceInterface = {
 
       groupIdMapping[group.id] = newGroup.id;
 
-      // Copy subtasks within this group
       for (const subtask of group.subtasks) {
         const { error: subtaskError } = await supabase
           .from('subtasks')
@@ -270,7 +299,6 @@ export const taskOperations: TaskServiceInterface = {
             content: subtask.content,
             due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
             order_index: subtask.orderIndex,
-            // Explicitly set complete_date to null to clear completion status
             complete_date: null,
           });
 
@@ -281,7 +309,6 @@ export const taskOperations: TaskServiceInterface = {
       }
     }
 
-    // Copy ungrouped subtasks (those not in any group)
     const ungroupedSubtasks = originalTask.subtasks.filter(subtask => 
       !originalTask.subtaskGroups.some(group => 
         group.subtasks.some(groupSubtask => groupSubtask.id === subtask.id)
@@ -298,7 +325,6 @@ export const taskOperations: TaskServiceInterface = {
           content: subtask.content,
           due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
           order_index: subtask.orderIndex,
-          // Explicitly set complete_date to null to clear completion status
           complete_date: null,
         });
 
@@ -313,11 +339,12 @@ export const taskOperations: TaskServiceInterface = {
       name: data.name,
       content: data.content || '',
       dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      completeDate: undefined, // Clear completion status for the copied task
+      completeDate: undefined,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
       subtasks: [],
-      subtaskGroups: []
+      subtaskGroups: [],
+      tags: []
     };
   },
 };

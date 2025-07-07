@@ -1,3 +1,4 @@
+
 export interface Subtask {
   id: string;
   name: string;
@@ -28,12 +29,14 @@ export interface Task {
   updatedAt: Date;
   subtasks: Subtask[];
   subtaskGroups: SubtaskGroup[];
+  tags: Tag[];
 }
 
 export interface TaskFormData {
   name: string;
   content: string;
   dueDate?: Date;
+  tagIds?: string[];
 }
 
 export interface SubtaskFormData {
