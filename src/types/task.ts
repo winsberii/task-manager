@@ -1,4 +1,6 @@
 
+import { Tag } from './tag';
+
 export interface Subtask {
   id: string;
   name: string;
