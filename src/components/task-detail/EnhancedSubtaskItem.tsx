@@ -163,7 +163,7 @@ export const EnhancedSubtaskItem = ({
                         }`}>
                           <MarkdownRenderer 
                             content={subtask.content} 
-                            compact={true}
+                            compact={false}
                             className="text-xs"
                           />
                         </div>
