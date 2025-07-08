@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { Edit, Copy, Trash2 } from 'lucide-react';
+import { Edit, Copy, Trash2, ExternalLink } from 'lucide-react';
 import { Task } from '@/types/task';
 
 interface TaskCardActionsProps {
@@ -31,6 +31,12 @@ export const TaskCardActions = ({ task, onEdit, onCopy, onDelete }: TaskCardActi
     }
   };
 
+  const handleOpenInNewWindow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    window.open(`/task/${task.id}`, '_blank');
+  };
+
   return (
     <div className="flex items-center gap-1">
       {onEdit && (
@@ -55,6 +61,15 @@ export const TaskCardActions = ({ task, onEdit, onCopy, onDelete }: TaskCardActi
           <Copy className="h-3 w-3" />
         </Button>
       )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleOpenInNewWindow}
+        className="h-6 w-6 p-0 hover:bg-gray-200"
+        title="Open in New Window"
+      >
+        <ExternalLink className="h-3 w-3" />
+      </Button>
       {onDelete && (
         <Button
           variant="ghost"
