@@ -238,7 +238,7 @@ export const taskOperations: TaskServiceInterface = {
     }
   },
 
-  // Copy a task with all subtasks and subtask groups
+  // Copy a task with all subtasks and subtask groups (but without tags)
   async copyTask(taskId: string): Promise<Task> {
     const originalTask = await taskOperations.getTask(taskId);
 
@@ -262,12 +262,6 @@ export const taskOperations: TaskServiceInterface = {
     }
 
     const newTaskId = data.id;
-
-    // Copy tags
-    if (originalTask.tags.length > 0) {
-      const { tagOperations } = await import('./tagOperations');
-      await tagOperations.addTagsToTask(newTaskId, originalTask.tags.map(tag => tag.id));
-    }
 
     const groupIdMapping: { [oldId: string]: string } = {};
     
