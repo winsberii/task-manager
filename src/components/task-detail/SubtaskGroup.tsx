@@ -8,6 +8,17 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { SubtaskFormData } from '@/types/task';
 import { EnhancedSubtaskItem } from './EnhancedSubtaskItem';
@@ -144,14 +155,34 @@ export const SubtaskGroup = ({
                       <Plus className="h-3 w-3 mr-1" />
                       Add
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDeleteGroup(group.id)}
-                      className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                        >
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Group</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete the group "{group.name}"? This will also delete all {group.subtasks.length} subtasks in this group. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => onDeleteGroup(group.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete Group
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 )}
               </div>
