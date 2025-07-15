@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,7 +114,7 @@ export const SubtaskGroup = ({
                       </div>
                     ) : (
                       <>
-                        <span className="font-semibold text-gray-900 text-sm">
+                        <span className="font-bold text-gray-900 text-sm uppercase">
                           {group.name}
                         </span>
                         <span className="text-xs text-gray-500 ml-2">
