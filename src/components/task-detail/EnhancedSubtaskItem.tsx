@@ -9,6 +9,17 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Draggable } from 'react-beautiful-dnd';
 import { SubtaskFormData } from '@/types/task';
 import { DragHandle } from './DragHandle';
@@ -178,15 +189,35 @@ export const EnhancedSubtaskItem = ({
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDeleteSubtask(subtask.id)}
-                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                        title="Delete Subtask"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                            title="Delete Subtask"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Subtask</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{subtask.name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDeleteSubtask(subtask.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete Subtask
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       {subtask.content?.trim() && (
                         <Button
                           variant="ghost"
