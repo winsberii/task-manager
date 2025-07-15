@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText } from 'lucide-react';
+import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -177,6 +177,15 @@ export const EnhancedSubtaskItem = ({
                         className="h-6 w-6 p-0"
                       >
                         <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteSubtask(subtask.id)}
+                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                        title="Delete Subtask"
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                       {subtask.content?.trim() && (
                         <Button
