@@ -5,6 +5,7 @@ import {
   ContextMenu,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { useNavigate } from 'react-router-dom';
 import { TaskCardContent } from './task-card/TaskCardContent';
 import { TaskCardActions } from './task-card/TaskCardActions';
 import { TaskCardBadges } from './task-card/TaskCardBadges';
@@ -21,11 +22,12 @@ interface TaskCardProps {
 }
 
 export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit, onTagClick }: TaskCardProps) => {
+  const navigate = useNavigate();
   const isCompleted = !!task.completeDate;
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
 
   const handleCardClick = () => {
-    // Don't navigate on card click - let users use the "Open in New Window" button instead
+    navigate(`/task/${task.id}`);
   };
 
   return (
