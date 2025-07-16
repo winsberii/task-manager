@@ -1,11 +1,13 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { taskService } from '@/services/taskService';
 import { TaskFormData, SubtaskFormData } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 
 export const useTaskMutations = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Create task mutation
@@ -92,12 +94,14 @@ export const useTaskMutations = () => {
   // Copy task mutation
   const copyTaskMutation = useMutation({
     mutationFn: taskService.copyTask,
-    onSuccess: () => {
+    onSuccess: (newTask) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast({
         title: 'Success',
         description: 'Task copied successfully',
       });
+      // Navigate to the new copied task
+      navigate(`/task/${newTask.id}`);
     },
     onError: (error) => {
       toast({
