@@ -25,7 +25,7 @@ export const TaskCard = ({ task, onComplete, onCopy, onDelete, onEdit, onTagClic
   const isOverdue = task.dueDate && !task.completeDate && new Date() > task.dueDate;
 
   const handleCardClick = () => {
-    window.location.href = `/task/${task.id}`;
+    // Don't navigate on card click - let users use the "Open in New Window" button instead
   };
 
   return (
