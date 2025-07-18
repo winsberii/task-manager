@@ -19,6 +19,7 @@ interface SubtasksListProps {
   onUpdateSubtask: (subtaskId: string, data: SubtaskFormData) => void;
   onDeleteSubtask: (subtaskId: string) => void;
   onCompleteSubtask: (subtaskId: string) => void;
+  onSkipSubtask: (subtaskId: string) => void;
   onUpdateGroup: (groupId: string, groupName: string) => void;
   onDeleteGroup: (groupId: string) => void;
   onCopySubtaskUrl: (subtaskId: string) => void;
@@ -34,6 +35,7 @@ export const SubtasksList = ({
   onUpdateSubtask,
   onDeleteSubtask,
   onCompleteSubtask,
+  onSkipSubtask,
   onUpdateGroup,
   onDeleteGroup,
   onCopySubtaskUrl,
@@ -162,17 +164,18 @@ export const SubtasksList = ({
                     }`}
                   >
                     {ungroupedSubtasks.map((subtask, index) => (
-                      <EnhancedSubtaskItem
-                        key={subtask.id}
-                        subtask={subtask}
-                        index={index}
-                        isGrouped={false}
-                        highlightSubtaskId={highlightSubtaskId}
-                        onUpdateSubtask={onUpdateSubtask}
-                        onDeleteSubtask={onDeleteSubtask}
-                        onCompleteSubtask={onCompleteSubtask}
-                        onCopySubtaskUrl={onCopySubtaskUrl}
-                      />
+                       <EnhancedSubtaskItem
+                         key={subtask.id}
+                         subtask={subtask}
+                         index={index}
+                         isGrouped={false}
+                         highlightSubtaskId={highlightSubtaskId}
+                         onUpdateSubtask={onUpdateSubtask}
+                         onDeleteSubtask={onDeleteSubtask}
+                         onCompleteSubtask={onCompleteSubtask}
+                         onSkipSubtask={onSkipSubtask}
+                         onCopySubtaskUrl={onCopySubtaskUrl}
+                       />
                     ))}
                     {provided.placeholder}
                   </div>
@@ -191,28 +194,29 @@ export const SubtasksList = ({
                   }`}
                 >
                   {sortedSubtaskGroups.map((group, groupIndex) => (
-                    <SubtaskGroup
-                      key={group.id}
-                      group={group}
-                      index={groupIndex}
-                      isExpanded={expandedGroups.has(group.id)}
-                      editingGroupId={editingGroupId}
-                      showAddSubtaskInGroup={showAddSubtaskInGroup}
-                      onToggleExpansion={toggleGroupExpansion}
-                      onEditGroup={handleEditGroup}
-                      onUpdateGroup={handleUpdateGroup}
-                      onCancelGroupEdit={handleCancelGroupEdit}
-                      onDeleteGroup={onDeleteGroup}
-                      onSetShowAddSubtask={setShowAddSubtaskInGroup}
-                      onAddSubtaskToGroup={onAddSubtaskToGroup}
-                      onUpdateSubtask={onUpdateSubtask}
-                      onDeleteSubtask={onDeleteSubtask}
-                      onCompleteSubtask={onCompleteSubtask}
-                      onCopySubtaskUrl={onCopySubtaskUrl}
-                      groupEditData={groupEditData}
-                      onSetGroupEditData={setGroupEditData}
-                      highlightSubtaskId={highlightSubtaskId}
-                    />
+                     <SubtaskGroup
+                       key={group.id}
+                       group={group}
+                       index={groupIndex}
+                       isExpanded={expandedGroups.has(group.id)}
+                       editingGroupId={editingGroupId}
+                       showAddSubtaskInGroup={showAddSubtaskInGroup}
+                       onToggleExpansion={toggleGroupExpansion}
+                       onEditGroup={handleEditGroup}
+                       onUpdateGroup={handleUpdateGroup}
+                       onCancelGroupEdit={handleCancelGroupEdit}
+                       onDeleteGroup={onDeleteGroup}
+                       onSetShowAddSubtask={setShowAddSubtaskInGroup}
+                       onAddSubtaskToGroup={onAddSubtaskToGroup}
+                       onUpdateSubtask={onUpdateSubtask}
+                       onDeleteSubtask={onDeleteSubtask}
+                       onCompleteSubtask={onCompleteSubtask}
+                       onSkipSubtask={onSkipSubtask}
+                       onCopySubtaskUrl={onCopySubtaskUrl}
+                       groupEditData={groupEditData}
+                       onSetGroupEditData={setGroupEditData}
+                       highlightSubtaskId={highlightSubtaskId}
+                     />
                   ))}
                   {provided.placeholder}
                 </div>

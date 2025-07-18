@@ -16,6 +16,7 @@ export interface SubtaskServiceInterface {
   updateSubtask(subtaskId: string, subtaskData: SubtaskFormData): Promise<void>;
   deleteSubtask(subtaskId: string): Promise<void>;
   toggleSubtaskComplete(subtaskId: string): Promise<void>;
+  toggleSubtaskSkip(subtaskId: string): Promise<void>;
   moveSubtask(subtaskId: string, targetGroupId: string | null, newIndex?: number): Promise<void>;
   reorderSubtasks(subtaskIds: string[], groupId?: string): Promise<void>;
 }

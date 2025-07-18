@@ -41,6 +41,7 @@ interface SubtaskGroupProps {
   onUpdateSubtask: (subtaskId: string, data: SubtaskFormData) => void;
   onDeleteSubtask: (subtaskId: string) => void;
   onCompleteSubtask: (subtaskId: string) => void;
+  onSkipSubtask: (subtaskId: string) => void;
   onCopySubtaskUrl: (subtaskId: string) => void;
   groupEditData: {[key: string]: string};
   onSetGroupEditData: (data: {[key: string]: string}) => void;
@@ -64,6 +65,7 @@ export const SubtaskGroup = ({
   onUpdateSubtask,
   onDeleteSubtask,
   onCompleteSubtask,
+  onSkipSubtask,
   onCopySubtaskUrl,
   groupEditData,
   onSetGroupEditData,
@@ -239,17 +241,18 @@ export const SubtaskGroup = ({
                   className="ml-6 space-y-1 border-l-2 border-gray-100 pl-3"
                 >
                   {group.subtasks.map((subtask: any, index: number) => (
-                    <EnhancedSubtaskItem
-                      key={subtask.id}
-                      subtask={subtask}
-                      index={index}
-                      isGrouped={true}
-                      highlightSubtaskId={highlightSubtaskId}
-                      onUpdateSubtask={onUpdateSubtask}
-                      onDeleteSubtask={onDeleteSubtask}
-                      onCompleteSubtask={onCompleteSubtask}
-                      onCopySubtaskUrl={onCopySubtaskUrl}
-                    />
+                     <EnhancedSubtaskItem
+                       key={subtask.id}
+                       subtask={subtask}
+                       index={index}
+                       isGrouped={true}
+                       highlightSubtaskId={highlightSubtaskId}
+                       onUpdateSubtask={onUpdateSubtask}
+                       onDeleteSubtask={onDeleteSubtask}
+                       onCompleteSubtask={onCompleteSubtask}
+                       onSkipSubtask={onSkipSubtask}
+                       onCopySubtaskUrl={onCopySubtaskUrl}
+                     />
                   ))}
                   {provided.placeholder}
                   {group.subtasks.length === 0 && (

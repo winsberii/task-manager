@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText, Trash2, SkipForward } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -35,6 +35,7 @@ interface EnhancedSubtaskItemProps {
   onUpdateSubtask: (subtaskId: string, data: SubtaskFormData) => void;
   onDeleteSubtask: (subtaskId: string) => void;
   onCompleteSubtask: (subtaskId: string) => void;
+  onSkipSubtask: (subtaskId: string) => void;
   onCopySubtaskUrl: (subtaskId: string) => void;
   isDragging?: boolean;
 }
@@ -47,6 +48,7 @@ export const EnhancedSubtaskItem = ({
   onUpdateSubtask,
   onDeleteSubtask,
   onCompleteSubtask,
+  onSkipSubtask,
   onCopySubtaskUrl,
   isDragging = false
 }: EnhancedSubtaskItemProps) => {
@@ -164,12 +166,15 @@ export const EnhancedSubtaskItem = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <span className={`text-sm block ${
-                        subtask.completeDate ? 'line-through text-gray-500' : isGrouped ? 'text-gray-600' : 'text-gray-700'
+                        subtask.completeDate ? 'line-through text-gray-500' : 
+                        subtask.skipped ? 'line-through text-gray-400' :
+                        isGrouped ? 'text-gray-600' : 'text-gray-700'
                       }`}>
                         {subtask.name}
                       </span>
                       {subtask.content && (
                         <div className={`mt-1 ${
+                          subtask.skipped ? 'text-gray-300 line-through' :
                           isGrouped ? 'text-gray-400' : 'text-gray-500'
                         }`}>
                           <MarkdownRenderer 
@@ -188,6 +193,15 @@ export const EnhancedSubtaskItem = ({
                         className="h-6 w-6 p-0"
                       >
                         <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onSkipSubtask(subtask.id)}
+                        className={`h-6 w-6 p-0 ${subtask.skipped ? 'text-orange-600 hover:text-orange-700' : 'text-gray-400 hover:text-orange-600'}`}
+                        title={subtask.skipped ? "Unskip Subtask" : "Skip Subtask"}
+                      >
+                        <SkipForward className="h-3 w-3" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

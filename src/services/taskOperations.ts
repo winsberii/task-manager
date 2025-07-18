@@ -284,17 +284,18 @@ export const taskOperations: TaskServiceInterface = {
       groupIdMapping[group.id] = newGroup.id;
 
       for (const subtask of group.subtasks) {
-        const { error: subtaskError } = await supabase
-          .from('subtasks')
-          .insert({
-            task_id: newTaskId,
-            subtask_group_id: newGroup.id,
-            name: subtask.name,
-            content: subtask.content,
-            due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
-            order_index: subtask.orderIndex,
-            complete_date: null,
-          });
+         const { error: subtaskError } = await supabase
+           .from('subtasks')
+           .insert({
+             task_id: newTaskId,
+             subtask_group_id: newGroup.id,
+             name: subtask.name,
+             content: subtask.content,
+             due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
+             order_index: subtask.orderIndex,
+             complete_date: null,
+             skipped: false,
+           });
 
         if (subtaskError) {
           console.error('Error copying subtask in group:', subtaskError);
@@ -310,17 +311,18 @@ export const taskOperations: TaskServiceInterface = {
     );
 
     for (const subtask of ungroupedSubtasks) {
-      const { error: subtaskError } = await supabase
-        .from('subtasks')
-        .insert({
-          task_id: newTaskId,
-          subtask_group_id: null,
-          name: subtask.name,
-          content: subtask.content,
-          due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
-          order_index: subtask.orderIndex,
-          complete_date: null,
-        });
+       const { error: subtaskError } = await supabase
+         .from('subtasks')
+         .insert({
+           task_id: newTaskId,
+           subtask_group_id: null,
+           name: subtask.name,
+           content: subtask.content,
+           due_date: subtask.dueDate ? subtask.dueDate.toISOString().split('T')[0] : null,
+           order_index: subtask.orderIndex,
+           complete_date: null,
+           skipped: false,
+         });
 
       if (subtaskError) {
         console.error('Error copying ungrouped subtask:', subtaskError);

@@ -135,6 +135,34 @@ export const subtaskOperations: SubtaskServiceInterface = {
     }
   },
 
+  // Toggle subtask skip status
+  async toggleSubtaskSkip(subtaskId: string): Promise<void> {
+    // First get the current subtask
+    const { data: subtask, error: fetchError } = await supabase
+      .from('subtasks')
+      .select('skipped')
+      .eq('id', subtaskId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching subtask:', fetchError);
+      throw fetchError;
+    }
+
+    const { error } = await supabase
+      .from('subtasks')
+      .update({
+        skipped: !subtask.skipped,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', subtaskId);
+
+    if (error) {
+      console.error('Error toggling subtask skip:', error);
+      throw error;
+    }
+  },
+
   // Enhanced reordering functions with proper order index updates
   async reorderSubtasks(subtaskIds: string[], groupId?: string): Promise<void> {
     const promises = subtaskIds.map((id, index) =>

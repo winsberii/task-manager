@@ -10,6 +10,7 @@ export interface Subtask {
   createdAt: Date;
   updatedAt: Date;
   orderIndex: number;
+  skipped: boolean;
 }
 
 export interface SubtaskGroup {
