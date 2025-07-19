@@ -166,8 +166,8 @@ export const EnhancedSubtaskItem = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <span className={`text-sm block ${
-                        subtask.completeDate ? 'line-through text-gray-500' : 
                         subtask.skipped ? 'line-through text-gray-400' :
+                        subtask.completeDate ? 'line-through text-gray-500' : 
                         isGrouped ? 'text-gray-600' : 'text-gray-700'
                       }`}>
                         {subtask.name}
