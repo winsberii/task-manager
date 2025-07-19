@@ -127,7 +127,7 @@ export const EnhancedSubtaskItem = ({
             onClick={() => onCompleteSubtask(subtask.id)}
             className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
           >
-            {subtask.completeDate ? (
+            {subtask.completeDate && !subtask.skipped ? (
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             ) : (
               <Circle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
@@ -166,7 +166,7 @@ export const EnhancedSubtaskItem = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <span className={`text-sm block ${
-                        subtask.skipped ? 'line-through text-gray-400' :
+                        subtask.skipped ? 'line-through text-muted-foreground' :
                         subtask.completeDate ? 'line-through text-gray-500' : 
                         isGrouped ? 'text-gray-600' : 'text-gray-700'
                       }`}>
@@ -174,7 +174,7 @@ export const EnhancedSubtaskItem = ({
                       </span>
                       {subtask.content && (
                         <div className={`mt-1 ${
-                          subtask.skipped ? 'text-gray-300 line-through' :
+                          subtask.skipped ? 'text-muted-foreground line-through' :
                           isGrouped ? 'text-gray-400' : 'text-gray-500'
                         }`}>
                           <MarkdownRenderer 
