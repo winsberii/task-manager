@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      quotes: {
+        Row: {
+          created_at: string
+          id: string
+          quote_text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quote_text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quote_text?: string
+        }
+        Relationships: []
+      }
       subtask_groups: {
         Row: {
           created_at: string
