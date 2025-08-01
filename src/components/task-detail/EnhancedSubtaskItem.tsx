@@ -168,7 +168,7 @@ export const EnhancedSubtaskItem = ({
                     <div className="flex-1 min-w-0">
                       <span className={`text-sm block ${
                         subtask.skipped ? 'line-through text-muted-foreground' :
-                        subtask.completeDate ? 'line-through text-gray-500' : 
+                        subtask.completeDate ? 'text-gray-500' : 
                         isGrouped ? 'text-gray-600' : 'text-gray-700'
                       }`}>
                         {subtask.name}
