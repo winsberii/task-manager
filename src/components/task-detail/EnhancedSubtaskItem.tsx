@@ -108,6 +108,22 @@ export const EnhancedSubtaskItem = ({
     }
   };
 
+  const handleCopyTitle = async () => {
+    try {
+      await navigator.clipboard.writeText(subtask.name);
+      toast({
+        title: "Title copied!",
+        description: "The subtask title has been copied to your clipboard.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy the title to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
       {(provided, snapshot) => (
@@ -253,6 +269,10 @@ export const EnhancedSubtaskItem = ({
                 <ContextMenuItem onClick={handleEdit}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Subtask
+                </ContextMenuItem>
+                <ContextMenuItem onClick={handleCopyTitle}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Title
                 </ContextMenuItem>
                 <ContextMenuItem 
                   onClick={handleCopyDescription}
