@@ -9,23 +9,17 @@ export interface Quote {
 export const quoteService = {
   async getRandomQuote(): Promise<Quote | null> {
     try {
-      // Get a random quote by ordering randomly and taking the first one
-      const { data, error } = await supabase
-        .from('quotes')
-        .select('*')
-        .order('created_at', { ascending: false }) // This will be randomized by the SQL function
-        .limit(1);
+      // Use the database function to get a truly random quote
+      const { data, error } = await supabase.rpc('get_random_quote');
 
       if (error) {
         console.error('Error fetching random quote:', error);
         return null;
       }
 
-      // If we have quotes, pick a random one from the result
+      // The function returns an array, so get the first (and only) result
       if (data && data.length > 0) {
-        // Use Math.random() to pick a random quote from the available quotes
-        const randomIndex = Math.floor(Math.random() * data.length);
-        return data[randomIndex];
+        return data[0];
       }
 
       return null;
