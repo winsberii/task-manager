@@ -93,10 +93,11 @@ export const EnhancedSubtaskItem = ({
     }
 
     try {
-      await navigator.clipboard.writeText(subtask.content);
+      const firstLine = subtask.content.split(/\r?\n/)[0];
+      await navigator.clipboard.writeText(firstLine);
       toast({
-        title: "Description copied!",
-        description: "The subtask description has been copied to your clipboard.",
+        title: "First line copied!",
+        description: "The first line of the subtask description has been copied to your clipboard.",
       });
     } catch (err) {
       toast({
