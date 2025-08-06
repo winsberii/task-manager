@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      integrations: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          id: string
+          name: string
+          password: string | null
+          type: string
+          updated_at: string
+          url: string | null
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          password?: string | null
+          type: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          password?: string | null
+          type?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       quotes: {
         Row: {
           created_at: string
