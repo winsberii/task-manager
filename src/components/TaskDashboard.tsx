@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Blocks } from 'lucide-react';
 import { taskService } from '@/services/taskService';
 import { TaskForm } from '@/components/TaskForm';
 import { TaskDetail } from '@/components/TaskDetail';
@@ -13,7 +13,7 @@ import { Task, TaskFormData } from '@/types/task';
 
 type CompletionFilter = 'uncompleted' | 'completed' | 'all';
 
-export const TaskDashboard = () => {
+export const TaskDashboard = ({ onOpenIntegrations }: { onOpenIntegrations?: () => void }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -149,10 +149,22 @@ export const TaskDashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Your Tasks</h2>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Task
-        </Button>
+        <div className="flex items-center gap-2">
+          {onOpenIntegrations && (
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={onOpenIntegrations}
+              title="Configure Integrations"
+            >
+              <Blocks className="h-4 w-4" />
+            </Button>
+          )}
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Task
+          </Button>
+        </div>
       </div>
 
       <TaskFilters
