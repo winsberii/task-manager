@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText, Trash2, SkipForward } from 'lucide-react';
+import { CheckCircle2, Circle, Edit, Save, X, Copy, FileText, Trash2, SkipForward, Send } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -26,6 +26,8 @@ import { DragHandle } from './DragHandle';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { useToast } from '@/hooks/use-toast';
+import { integrationService } from '@/services/integrationService';
+import { INTEGRATION_TYPES } from '@/types/integration';
 
 interface EnhancedSubtaskItemProps {
   subtask: any;
@@ -58,6 +60,7 @@ export const EnhancedSubtaskItem = ({
     content: subtask.content || ''
   });
   const { toast } = useToast();
+  const [isSending, setIsSending] = useState(false);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -121,6 +124,63 @@ export const EnhancedSubtaskItem = ({
         description: "Could not copy the title to clipboard.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSendToKanboard = async () => {
+    try {
+      const integration = await integrationService.getIntegrationByType(INTEGRATION_TYPES.KANBOARD);
+      if (!integration) {
+        toast({ title: "Kanboard not configured", description: "Add your Kanboard integration first.", variant: "destructive" });
+        return;
+      }
+      if (!integration.api_key) {
+        toast({ title: "Missing API key", description: "Set the Kanboard API key in Integrations.", variant: "destructive" });
+        return;
+      }
+      if (!integration.url) {
+        toast({ title: "Missing URL", description: "Set the Kanboard URL in Integrations.", variant: "destructive" });
+        return;
+      }
+
+      const baseUrl = integration.url.trim();
+      const endpoint = baseUrl.endsWith('/jsonrpc.php')
+        ? baseUrl
+        : `${baseUrl.replace(/\/$/, '')}/jsonrpc.php`;
+
+      const payload = {
+        jsonrpc: "2.0",
+        method: "createTask",
+        id: 1,
+        params: {
+          project_id: 1,
+          title: subtask.name,
+          description: subtask.content || ""
+        }
+      };
+
+      setIsSending(true);
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${integration.api_key}`,
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => null);
+      setIsSending(false);
+
+      if (!res.ok || (data && data.error)) {
+        const message = data?.error?.message || `HTTP ${res.status}`;
+        toast({ title: 'Failed to send to Kanboard', description: message, variant: 'destructive' });
+        return;
+      }
+
+      toast({ title: 'Sent to Kanboard', description: 'Task created successfully in Kanboard.' });
+    } catch (error: any) {
+      setIsSending(false);
+      toast({ title: 'Error', description: error?.message || 'Could not send to Kanboard.', variant: 'destructive' });
     }
   };
 
@@ -284,6 +344,10 @@ export const EnhancedSubtaskItem = ({
                 <ContextMenuItem onClick={() => onCopySubtaskUrl(subtask.id)}>
                   <Copy className="h-4 w-4 mr-2" />
                   Copy Subtask Link
+                </ContextMenuItem>
+                <ContextMenuItem onClick={handleSendToKanboard} disabled={isSending}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send to Kanboard
                 </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
