@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      integration_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           api_key: string | null
@@ -51,7 +75,15 @@ export type Database = {
           user_id?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "integrations_type_fkey"
+            columns: ["type"]
+            isOneToOne: false
+            referencedRelation: "integration_types"
+            referencedColumns: ["type"]
+          },
+        ]
       }
       quotes: {
         Row: {
