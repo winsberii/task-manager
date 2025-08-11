@@ -26,8 +26,7 @@ import { DragHandle } from './DragHandle';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { useToast } from '@/hooks/use-toast';
-import { integrationService } from '@/services/integrationService';
-import { INTEGRATION_TYPES } from '@/types/integration';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EnhancedSubtaskItemProps {
   subtask: any;
@@ -129,51 +128,20 @@ export const EnhancedSubtaskItem = ({
 
   const handleSendToKanboard = async () => {
     try {
-      const integration = await integrationService.getIntegrationByType(INTEGRATION_TYPES.KANBOARD);
-      if (!integration) {
-        toast({ title: "Kanboard not configured", description: "Add your Kanboard integration first.", variant: "destructive" });
-        return;
-      }
-      if (!integration.api_key) {
-        toast({ title: "Missing API key", description: "Set the Kanboard API key in Integrations.", variant: "destructive" });
-        return;
-      }
-      if (!integration.url) {
-        toast({ title: "Missing URL", description: "Set the Kanboard URL in Integrations.", variant: "destructive" });
-        return;
-      }
-
-      const baseUrl = integration.url.trim();
-      const endpoint = baseUrl.endsWith('/jsonrpc.php')
-        ? baseUrl
-        : `${baseUrl.replace(/\/$/, '')}/jsonrpc.php`;
-
-      const payload = {
-        jsonrpc: "2.0",
-        method: "createTask",
-        id: 1,
-        params: {
-          project_id: 1,
-          title: subtask.name,
-          description: subtask.content || ""
-        }
-      };
-
       setIsSending(true);
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${integration.api_key}`,
+
+      const { data, error } = await supabase.functions.invoke('kanboard-proxy', {
+        body: {
+          title: subtask.name,
+          description: subtask.content || '',
+          project_id: 1,
         },
-        body: JSON.stringify(payload)
       });
-      const data = await res.json().catch(() => null);
+
       setIsSending(false);
 
-      if (!res.ok || (data && data.error)) {
-        const message = data?.error?.message || `HTTP ${res.status}`;
-        toast({ title: 'Failed to send to Kanboard', description: message, variant: 'destructive' });
+      if (error) {
+        toast({ title: 'Failed to send to Kanboard', description: error.message || 'Unknown error', variant: 'destructive' });
         return;
       }
 

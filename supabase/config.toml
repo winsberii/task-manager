@@ -1,1 +1,4 @@
 project_id = "sfysjxptsktpwhrkrrmk"
+
+[functions.kanboard-proxy]
+verify_jwt = true
