@@ -48,6 +48,7 @@ serve(async (req: Request) => {
     const baseUrl = (integration.url || '').toString().trim();
     const apiKey = (integration.api_key || '').toString().trim();
     const username = (integration.username || '').toString().trim();
+    const password = (integration.password || '').toString().trim();
 
     if (!baseUrl) {
       return new Response(
@@ -67,7 +68,23 @@ serve(async (req: Request) => {
       ? baseUrl
       : `${baseUrl.replace(/\/$/, '')}/jsonrpc.php`;
 
-    // Kanboard JSON-RPC API payload with authentication
+    // Build HTTP Basic auth per Kanboard docs
+    let authUser = 'jsonrpc';
+    let authPass = apiKey;
+
+    if (username) {
+      // Prefer user credentials: password or personal access token (api_key)
+      authUser = username;
+      authPass = password || apiKey;
+    }
+
+    if (!authPass) {
+      return new Response(
+        JSON.stringify({ error: 'Kanboard credentials missing: provide api_key or password' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'createTask',
@@ -76,18 +93,17 @@ serve(async (req: Request) => {
         title,
         description: description || '',
         project_id,
-        // Include API authentication in params
-        ...(username ? { username, password: apiKey } : { token: apiKey })
       },
     };
 
-    console.log('Sending request to Kanboard:', { endpoint, method: 'createTask', project_id });
+    console.log('Sending request to Kanboard:', { endpoint, method: 'createTask', project_id, authMode: username ? 'user' : 'application' });
 
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'TaskManager/1.0',
+        'Authorization': 'Basic ' + btoa(`${authUser}:${authPass}`),
       },
       body: JSON.stringify(payload),
     });
