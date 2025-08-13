@@ -5,7 +5,7 @@ export const integrationService = {
   async getIntegrations(): Promise<Integration[]> {
     const { data, error } = await supabase
       .from('integrations')
-      .select('*')
+      .select('id, user_id, name, type, url, username, created_at, updated_at')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -23,37 +23,35 @@ export const integrationService = {
       throw new Error('User not authenticated');
     }
 
-    const { data, error } = await supabase
-      .from('integrations')
-      .insert({
-        ...integrationData,
-        user_id: user.id,
-      })
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke('save-integration', {
+      body: {
+        action: 'create',
+        data: integrationData,
+      },
+    });
 
     if (error) {
       console.error('Error creating integration:', error);
       throw error;
     }
 
-    return data;
+    return data as Integration;
   },
 
   async updateIntegration(id: string, updates: UpdateIntegrationData): Promise<Integration> {
-    const { data, error } = await supabase
-      .from('integrations')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke('save-integration', {
+      body: {
+        action: 'update',
+        data: { id, ...updates },
+      },
+    });
 
     if (error) {
       console.error('Error updating integration:', error);
       throw error;
     }
 
-    return data;
+    return data as Integration;
   },
 
   async deleteIntegration(id: string): Promise<void> {
@@ -71,7 +69,7 @@ export const integrationService = {
   async getIntegrationByType(type: string): Promise<Integration | null> {
     const { data, error } = await supabase
       .from('integrations')
-      .select('*')
+      .select('id, user_id, name, type, url, username, created_at, updated_at')
       .eq('type', type)
       .single();
 

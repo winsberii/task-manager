@@ -7,6 +7,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Encryption helpers for decrypting stored credentials (AES-GCM with base64 fields)
+const ENC_KEY_B64 = Deno.env.get('INTEGRATIONS_ENC_KEY') || '';
+
+function b64ToBytes(b64: string): Uint8Array {
+  try {
+    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  } catch {
+    return new Uint8Array();
+  }
+}
+
+async function importAesKey(b64: string): Promise<CryptoKey> {
+  const raw = b64ToBytes(b64);
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+}
+
+async function decryptField(cipherB64?: string | null, ivB64?: string | null): Promise<string | null> {
+  if (!cipherB64 || !ivB64 || !ENC_KEY_B64) return null;
+  try {
+    const key = await importAesKey(ENC_KEY_B64);
+    const iv = b64ToBytes(ivB64);
+    const cipher = b64ToBytes(cipherB64);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+    return new TextDecoder().decode(plain);
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -50,6 +79,18 @@ serve(async (req: Request) => {
     const username = (integration.username || '').toString().trim();
     const password = (integration.password || '').toString().trim();
 
+    // Try to decrypt encrypted fields if present and key is configured
+    let decApiKey = apiKey;
+    let decPassword = password;
+    try {
+      const decApi = await decryptField(integration.encrypted_api_key, integration.encrypted_api_key_iv);
+      const decPass = await decryptField(integration.encrypted_password, integration.encrypted_password_iv);
+      if (decApi) decApiKey = decApi;
+      if (decPass) decPassword = decPass;
+    } catch (_e) {
+      // Ignore decryption errors and fall back to plaintext fields
+    }
+
     if (!baseUrl) {
       return new Response(
         JSON.stringify({ error: 'Kanboard URL is missing in the integration.' }),
@@ -57,12 +98,7 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'Kanboard API key is missing in the integration.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
+// Using either API key or username/password; will validate later
 
     const endpoint = baseUrl.endsWith('/jsonrpc.php')
       ? baseUrl
@@ -70,12 +106,12 @@ serve(async (req: Request) => {
 
     // Build HTTP Basic auth per Kanboard docs
     let authUser = 'jsonrpc';
-    let authPass = apiKey;
+    let authPass = decApiKey;
 
     if (username) {
       // Prefer user credentials: password or personal access token (api_key)
       authUser = username;
-      authPass = password || apiKey;
+      authPass = decPassword || decApiKey;
     }
 
     if (!authPass) {

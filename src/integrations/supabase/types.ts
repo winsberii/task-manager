@@ -42,6 +42,10 @@ export type Database = {
         Row: {
           api_key: string | null
           created_at: string
+          encrypted_api_key: string | null
+          encrypted_api_key_iv: string | null
+          encrypted_password: string | null
+          encrypted_password_iv: string | null
           id: string
           name: string
           password: string | null
@@ -54,6 +58,10 @@ export type Database = {
         Insert: {
           api_key?: string | null
           created_at?: string
+          encrypted_api_key?: string | null
+          encrypted_api_key_iv?: string | null
+          encrypted_password?: string | null
+          encrypted_password_iv?: string | null
           id?: string
           name: string
           password?: string | null
@@ -66,6 +74,10 @@ export type Database = {
         Update: {
           api_key?: string | null
           created_at?: string
+          encrypted_api_key?: string | null
+          encrypted_api_key_iv?: string | null
+          encrypted_password?: string | null
+          encrypted_password_iv?: string | null
           id?: string
           name?: string
           password?: string | null
