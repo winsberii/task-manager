@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@node-rs/argon2-wasm32-wasi": path.resolve(__dirname, "./src/lib/empty.ts"),
     },
   },
 }));
